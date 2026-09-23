@@ -1,0 +1,9 @@
+# Pilot (~1-1.5 h, ~$1-2 on g5.xlarge). Run before any main queue.
+# 1) choose MEG's partitioner on base-model rollouts (pre-registered rule)
+calibrate 0.5B
+# 2) two learning rates for the headline method, each timing a small eval probe
+train heg_grpo 0 0.5B --tier pilot --steps 30 --lr 1e-6 --tag pilot_lr1e-6 --eval_probe 16 --final_eval none
+train heg_grpo 0 0.5B --tier pilot --steps 30 --lr 1e-5 --tag pilot_lr1e-5 --eval_probe 16 --final_eval none
+# 3) confirm the SELF filter is active (share of prompts whose greedy answer fails)
+train o_self 0 0.5B --tier pilot --steps 10 --lr 1e-5 --tag pilot_self --final_eval none
+# Then: python pilot_report.py --run heg_grpo__pilot_lr1e-5 ...   (and the other two runs)

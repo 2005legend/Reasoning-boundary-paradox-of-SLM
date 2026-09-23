@@ -1,0 +1,9 @@
+# Rebalanced 2026-10-07 after instance B was lost at seed 1 step ~85 (memory blow-up in answer
+# checking, now guarded). Instance A, after base + vanilla 0 + heg_grpo 0 (queue A):
+# rest of seed 0, then seed 2 of the primary-contrast conditions.
+train h_cb_grpo 0 0.5B
+train meg 0 0.5B
+train cb_grpo 0 0.5B
+train o_self 0 0.5B
+train h_cb_grpo 2 0.5B
+train meg 2 0.5B

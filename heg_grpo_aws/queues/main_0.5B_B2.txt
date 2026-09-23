@@ -1,0 +1,10 @@
+# Rebalanced 2026-10-07, instance B (new machine): seed 1 (vanilla and heg_grpo resume from their
+# step-75 checkpoints), then heg_grpo seed 2; vanilla seed 2 last, used only if it finishes in time.
+train vanilla 1 0.5B
+train heg_grpo 1 0.5B
+train h_cb_grpo 1 0.5B
+train meg 1 0.5B
+train cb_grpo 1 0.5B
+train o_self 1 0.5B
+train heg_grpo 2 0.5B
+train vanilla 2 0.5B
