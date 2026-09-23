@@ -1,0 +1,166 @@
+"""
+CBGRPOConfig - Configuration for Capacity-Balanced GRPO Training
+
+FIXED VERSION - Compatible with TRL GRPOConfig parameters
+"""
+
+from dataclasses import dataclass, field
+from typing import Optional, List, Dict, Any
+import json
+from pathlib import Path
+
+try:
+    from trl import GRPOConfig as BaseGRPOConfig
+except ImportError:
+    raise ImportError("TRL library required. Install with: pip install trl>=0.12.0")
+
+
+@dataclass
+class CBGRPOConfig:
+    """Configuration for Capacity-Balanced GRPO (CB-GRPO) training."""
+    
+    # === Capacity Balancing Parameters ===
+    n_clusters: int = field(default=16)
+    ema_alpha: float = field(default=0.01)
+    decay_factor: float = field(default=0.9)
+    theta_threshold: float = field(default=1.2)
+    balance_window: int = field(default=50)
+    track_perplexity: bool = field(default=True)
+    
+    # === Training Parameters ===
+    output_dir: str = field(default="./outputs")
+    num_train_epochs: int = field(default=1)
+    max_steps: int = field(default=-1)
+    per_device_train_batch_size: int = field(default=2)
+    gradient_accumulation_steps: int = field(default=4)
+    learning_rate: float = field(default=5e-6)
+    lr_scheduler_type: str = field(default="cosine")
+    warmup_steps: int = field(default=0)
+    
+    # GRPO-specific (TRL uses these names)
+    beta: float = field(default=0.1)
+    num_generations: int = field(default=4)  # TRL uses 'num_generations', not 'num_generation_per_prompt'
+    
+    # Generation config (passed separately, not in GRPOConfig)
+    max_new_tokens: int = field(default=512)
+    temperature: float = field(default=0.7)
+    top_p: float = field(default=0.9)
+    
+    # Checkpointing
+    save_strategy: str = field(default="steps")
+    save_steps: int = field(default=100)
+    save_total_limit: int = field(default=3)
+    
+    # Memory optimization
+    gradient_checkpointing: bool = field(default=True)
+    fp16: bool = field(default=True)
+    
+    # Misc
+    logging_steps: int = field(default=10)
+    remove_unused_columns: bool = field(default=False)
+    report_to: str = field(default="none")
+    seed: int = field(default=42)
+    
+    def __post_init__(self):
+        """Validate parameters after initialization."""
+        if self.ema_alpha <= 0 or self.ema_alpha > 1:
+            raise ValueError(f"ema_alpha must be in (0, 1], got {self.ema_alpha}")
+        if self.decay_factor <= 0 or self.decay_factor >= 1:
+            raise ValueError(f"decay_factor must be in (0, 1), got {self.decay_factor}")
+        if self.theta_threshold <= 1.0:
+            raise ValueError(f"theta_threshold must be > 1.0, got {self.theta_threshold}")
+    
+    def to_grpo_config(self) -> "BaseGRPOConfig":
+        """
+        Convert CBGRPOConfig to TRL's GRPOConfig.
+        
+        Note: GRPOConfig only accepts specific parameters.
+        Generation parameters (max_new_tokens, temperature, top_p) must be passed
+        separately to the trainer or model.generate().
+        """
+        return BaseGRPOConfig(
+            output_dir=self.output_dir,
+            num_train_epochs=self.num_train_epochs,
+            max_steps=self.max_steps,
+            per_device_train_batch_size=self.per_device_train_batch_size,
+            gradient_accumulation_steps=self.gradient_accumulation_steps,
+            learning_rate=self.learning_rate,
+            lr_scheduler_type=self.lr_scheduler_type,
+            warmup_steps=self.warmup_steps,
+            beta=self.beta,
+            num_generations=self.num_generations,  # TRL parameter name
+            save_strategy=self.save_strategy,
+            save_steps=self.save_steps,
+            save_total_limit=self.save_total_limit,
+            gradient_checkpointing=self.gradient_checkpointing,
+            fp16=self.fp16,
+            logging_steps=self.logging_steps,
+            remove_unused_columns=self.remove_unused_columns,
+            report_to=self.report_to,
+            seed=self.seed,
+        )
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Export configuration as dictionary."""
+        return {
+            "n_clusters": self.n_clusters,
+            "ema_alpha": self.ema_alpha,
+            "decay_factor": self.decay_factor,
+            "theta_threshold": self.theta_threshold,
+            "balance_window": self.balance_window,
+            "track_perplexity": self.track_perplexity,
+            "output_dir": self.output_dir,
+            "num_train_epochs": self.num_train_epochs,
+            "max_steps": self.max_steps,
+            "per_device_train_batch_size": self.per_device_train_batch_size,
+            "gradient_accumulation_steps": self.gradient_accumulation_steps,
+            "learning_rate": self.learning_rate,
+            "lr_scheduler_type": self.lr_scheduler_type,
+            "warmup_steps": self.warmup_steps,
+            "beta": self.beta,
+            "num_generations": self.num_generations,
+            "max_new_tokens": self.max_new_tokens,
+            "temperature": self.temperature,
+            "top_p": self.top_p,
+            "save_strategy": self.save_strategy,
+            "save_steps": self.save_steps,
+            "save_total_limit": self.save_total_limit,
+            "gradient_checkpointing": self.gradient_checkpointing,
+            "fp16": self.fp16,
+            "logging_steps": self.logging_steps,
+            "remove_unused_columns": self.remove_unused_columns,
+            "report_to": self.report_to,
+            "seed": self.seed,
+        }
+    
+    def save(self, path: str):
+        """Save configuration to JSON file."""
+        with open(path, 'w') as f:
+            json.dump(self.to_dict(), f, indent=2)
+    
+    @classmethod
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "CBGRPOConfig":
+        """Create CBGRPOConfig from dictionary."""
+        # Filter out unknown keys
+        valid_keys = {f.name for f in cls.__dataclass_fields__.values()}
+        filtered_dict = {k: v for k, v in config_dict.items() if k in valid_keys}
+        return cls(**filtered_dict)
+    
+    @classmethod
+    def load(cls, path: str) -> "CBGRPOConfig":
+        """Load configuration from JSON file."""
+        with open(path, 'r') as f:
+            config_dict = json.load(f)
+        return cls.from_dict(config_dict)
+
+
+# Test
+if __name__ == "__main__":
+    config = CBGRPOConfig(
+        n_clusters=16,
+        max_steps=100,
+        output_dir="./test"
+    )
+    print(f"✅ Config created: {config.n_clusters} clusters")
+    grpo_config = config.to_grpo_config()
+    print(f"✅ GRPOConfig created successfully")

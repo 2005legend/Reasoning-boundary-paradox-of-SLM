@@ -1,0 +1,353 @@
+# ============================================================================
+# CELL 24: CB-GRPO PRODUCTION TRAINING EXECUTION
+# ============================================================================
+# This cell runs CB-GRPO training with capacity balancing
+#
+# IMPORTANT: This requires:
+# - Cell 23 (CB-GRPO config) to have been run
+# - cluster_assignments.pkl from Cell 6 (clustering)
+# - GSM8K dataset loaded from earlier cells
+
+import torch
+import gc
+import json
+import pickle
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Any
+from dataclasses import asdict
+
+# TRL imports
+from trl import GRPOTrainer, GRPOConfig
+from transformers import TrainingArguments
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+from datasets import Dataset
+
+print("=" * 80)
+print("🔥 CB-GRPO PRODUCTION TRAINING")
+print("=" * 80)
+print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print("=" * 80)
+print()
+
+# ==============================================================================
+# STEP 1: LOAD CLUSTER ASSIGNMENTS
+# ==============================================================================
+print("⏳ STEP 1/8: Loading cluster assignments...")
+
+cluster_file = Path("/content/drive/MyDrive/RLVR_Research/cluster_assignments.pkl")
+if not cluster_file.exists():
+    cluster_file = Path("cluster_assignments.pkl")
+
+if cluster_file.exists():
+    with open(cluster_file, 'rb') as f:
+        cluster_data = pickle.load(f)
+    
+    cluster_assignments = cluster_data['assignments']
+    n_clusters = cluster_data['n_clusters']
+    
+    print(f"✅ Loaded {len(cluster_assignments)} cluster assignments")
+    print(f"   Number of clusters: {n_clusters}")
+else:
+    print(f"❌ Cluster assignments not found at: {cluster_file}")
+    print("\nRun Cell 6 (clustering) first to create cluster_assignments.pkl")
+    raise FileNotFoundError("cluster_assignments.pkl not found")
+
+print()
+
+# ==============================================================================
+# STEP 2: PREPARE OUTPUT DIRECTORIES
+# ==============================================================================
+print("⏳ STEP 2/8: Preparing output directories...")
+
+base_dir = Path("/content/drive/MyDrive/RLVR_Research")
+if not base_dir.exists():
+    base_dir = Path("./RLVR_Research")
+    base_dir.mkdir(exist_ok=True)
+
+checkpoint_dir = base_dir / "checkpoints" / EXPERIMENT_NAME
+results_dir = base_dir / "results" / EXPERIMENT_NAME
+logs_dir = base_dir / "logs" / EXPERIMENT_NAME
+
+for d in [checkpoint_dir, results_dir, logs_dir]:
+    d.mkdir(parents=True, exist_ok=True)
+
+print(f"✅ Output directories created:")
+print(f"   Checkpoints: {checkpoint_dir}")
+print(f"   Results: {results_dir}")
+print(f"   Logs: {logs_dir}")
+
+# Save config
+config_path = results_dir / "cbgrpo_config.json"
+cbgrpo_config.save(str(config_path))
+print(f"   Config saved: {config_path}")
+
+print()
+
+# ==============================================================================
+# STEP 3: LOAD MODEL WITH QLOARA
+# ==============================================================================
+print("⏳ STEP 3/8: Loading model with QLoRA...")
+
+# Clear GPU memory
+if torch.cuda.is_available():
+    torch.cuda.empty_cache()
+    gc.collect()
+    print(f"   GPU memory cleared")
+
+# Load model using same approach as vanilla GRPO
+try:
+    model, tokenizer = load_quantized_model(base_config.model_size, base_config)
+    print(f"✅ Model loaded: Qwen2.5-{base_config.model_size}-Instruct")
+    
+    # Display VRAM usage
+    if torch.cuda.is_available():
+        allocated = torch.cuda.memory_allocated(0) / (1024**3)
+        reserved = torch.cuda.memory_reserved(0) / (1024**3)
+        print(f"   VRAM allocated: {allocated:.2f} GB")
+        print(f"   VRAM reserved: {reserved:.2f} GB")
+except Exception as e:
+    print(f"❌ Model loading failed: {e}")
+    raise
+
+print()
+
+# ==============================================================================
+# STEP 4: PREPARE DATASET WITH CLUSTER IDS
+# ==============================================================================
+print("⏳ STEP 4/8: Preparing training dataset with cluster IDs...")
+
+# Get problems and answers
+train_problems = gsm8k_train['problems']
+train_answers = gsm8k_train['answers']
+
+# For smoke tier, use subset
+if USE_SMOKE_TIER:
+    train_problems = train_problems[:500]
+    train_answers = train_answers[:500]
+    print(f"   Using subset for smoke test: {len(train_problems)} problems")
+
+# Format prompts with XML template
+formatted_prompts = batch_format_prompts(train_problems, include_example=True)
+
+# Create dataset WITH CLUSTER IDS
+print(f"   Assigning cluster IDs to {len(formatted_prompts)} prompts...")
+
+train_data = []
+cluster_id_count = 0
+missing_cluster_count = 0
+
+for prompt, problem, answer in zip(formatted_prompts, train_problems, train_answers):
+    # Get cluster ID from assignments
+    cluster_id = cluster_assignments.get(problem, 0)  # Default to 0 if not found
+    
+    if problem not in cluster_assignments:
+        missing_cluster_count += 1
+    
+    train_data.append({
+        "prompt": prompt,
+        "problem": problem,
+        "ground_truth": answer,
+        "cluster_id": cluster_id  # CRITICAL: Add cluster ID for CB-GRPO
+    })
+    cluster_id_count += 1
+
+print(f"✅ Dataset prepared: {len(train_data)} examples")
+print(f"   Cluster IDs assigned: {cluster_id_count}")
+if missing_cluster_count > 0:
+    print(f"   ⚠️  Missing cluster assignments: {missing_cluster_count} (defaulted to cluster 0)")
+
+# Create HuggingFace Dataset
+train_dataset = Dataset.from_list(train_data)
+
+# Verify cluster_id field exists
+if 'cluster_id' not in train_dataset.column_names:
+    print("❌ ERROR: 'cluster_id' field missing from dataset!")
+    raise ValueError("Dataset must have 'cluster_id' field for CB-GRPO")
+
+print(f"   Dataset columns: {train_dataset.column_names}")
+
+print()
+
+# ==============================================================================
+# STEP 5: SETUP REWARD FUNCTION
+# ==============================================================================
+print("⏳ STEP 5/8: Configuring reward function...")
+
+def compute_reward_for_grpo(generated_text: str, ground_truth: str) -> float:
+    """
+    Reward function for GRPO training.
+    
+    Combines format reward (XML structure) and correctness reward (answer matching).
+    """
+    return compute_total_reward(generated_text, ground_truth, format_weight=0.2)
+
+print(f"✅ Reward function configured")
+print(f"   Format weight: 0.2")
+print(f"   Correctness weight: 0.8")
+
+print()
+
+# ==============================================================================
+# STEP 6: CONFIGURE CB-GRPO TRAINER
+# ==============================================================================
+print("⏳ STEP 6/8: Initializing CB-GRPO Trainer...")
+
+# Get GRPOConfig from CBGRPOConfig
+training_args = cbgrpo_config.to_grpo_config()
+
+# LoRA configuration (same as vanilla GRPO for fair comparison)
+peft_config = LoraConfig(
+    r=base_config.lora_r,
+    lora_alpha=base_config.lora_alpha,
+    target_modules=base_config.lora_target_modules,
+    lora_dropout=0.05,
+    bias="none",
+    task_type="CAUSAL_LM",
+)
+
+print(f"✅ Training configuration:")
+print(f"   Steps: {training_args.max_steps}")
+print(f"   Effective batch size: {training_args.per_device_train_batch_size * training_args.gradient_accumulation_steps}")
+print(f"   Learning rate: {training_args.learning_rate}")
+print(f"   Rollouts per prompt: {training_args.num_generation_per_prompt}")
+print(f"   Checkpoint every: {training_args.save_steps} steps")
+print()
+print(f"CB-GRPO Configuration:")
+print(f"   n_clusters: {cbgrpo_config.n_clusters}")
+print(f"   ema_alpha: {cbgrpo_config.ema_alpha}")
+print(f"   decay_factor: {cbgrpo_config.decay_factor}")
+print(f"   theta_threshold: {cbgrpo_config.theta_threshold}")
+
+# Initialize CB-GRPO Trainer
+try:
+    trainer = CBGRPOTrainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        cbgrpo_config=cbgrpo_config,  # Pass CB-GRPO config
+        tokenizer=tokenizer,
+        peft_config=peft_config,
+    )
+    
+    print(f"\n✅ CB-GRPO Trainer initialized")
+    print(f"   Trainable parameters: {trainer.model.num_parameters(only_trainable=True):,}")
+    
+except Exception as e:
+    print(f"❌ Trainer initialization failed: {e}")
+    import traceback
+    traceback.print_exc()
+    raise
+
+print()
+
+# ==============================================================================
+# STEP 7: EXECUTE TRAINING
+# ==============================================================================
+print("\n" + "=" * 80)
+print("🔥 STEP 7/8: STARTING CB-GRPO TRAINING")
+print("=" * 80)
+print()
+print("Training will:")
+print(f"  • Run for {training_args.max_steps} steps")
+print(f"  • Save checkpoints every {training_args.save_steps} steps")
+print(f"  • Generate {training_args.num_generation_per_prompt} solutions per problem")
+print(f"  • Track capacity balance via EMA (every {cbgrpo_config.balance_window} steps)")
+print(f"  • Apply soft decay to over-spending clusters")
+print()
+print("Monitor:")
+print("  • Progress bar below")
+print("  • GPU usage (bottom right)")
+print("  • Balance metrics (Gini coefficient, spend distribution)")
+print()
+print("=" * 80)
+print()
+
+# Check for existing checkpoints
+existing_checkpoints = list(checkpoint_dir.glob("checkpoint-*"))
+if existing_checkpoints:
+    latest_checkpoint = max(existing_checkpoints, key=lambda p: int(p.name.split('-')[1]))
+    print(f"⏳ Found existing checkpoint: {latest_checkpoint.name}")
+    print(f"   Resuming from step {latest_checkpoint.name.split('-')[1]}")
+    print()
+
+# START TRAINING
+try:
+    train_result = trainer.train(resume_from_checkpoint=len(existing_checkpoints) > 0)
+    
+    print("\n" + "=" * 80)
+    print("✅ CB-GRPO TRAINING COMPLETE")
+    print("=" * 80)
+    
+    # Save final model
+    final_model_path = checkpoint_dir / "final_model"
+    trainer.save_model(str(final_model_path))
+    print(f"✅ Final model saved: {final_model_path}")
+    
+    # Save training metrics
+    metrics_path = results_dir / "training_metrics.json"
+    with open(metrics_path, 'w') as f:
+        json.dump(train_result.metrics, f, indent=2)
+    print(f"✅ Metrics saved: {metrics_path}")
+    
+    # Save balance history (CRITICAL for research analysis)
+    trainer.save_balance_history(str(results_dir))
+    print(f"✅ Balance history saved")
+    
+    # Generate and save balance report
+    balance_report = trainer.get_balance_report()
+    report_path = results_dir / "cbgrpo_balance_report.json"
+    with open(report_path, 'w') as f:
+        json.dump(balance_report, f, indent=2)
+    print(f"✅ Balance report saved: {report_path}")
+    
+except KeyboardInterrupt:
+    print("\n⚠️  Training interrupted by user")
+    print(f"   Last checkpoint saved at: {checkpoint_dir}")
+    print(f"   Re-run this cell to resume training")
+    
+except Exception as e:
+    print(f"\n❌ Training failed: {e}")
+    import traceback
+    traceback.print_exc()
+    print(f"   Check logs at: {logs_dir}")
+    raise
+
+finally:
+    # Cleanup
+    print("\n⏳ Cleaning up...")
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        gc.collect()
+    print("✅ GPU memory cleared")
+
+print()
+
+# ==============================================================================
+# STEP 8: TRAINING SUMMARY
+# ==============================================================================
+print("=" * 80)
+print("📊 CB-GRPO TRAINING SUMMARY")
+print("=" * 80)
+print(f"Experiment: {EXPERIMENT_NAME}")
+print(f"Model: Qwen2.5-{base_config.model_size}-Instruct")
+print(f"Training steps: {training_args.max_steps}")
+print(f"End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print()
+print("CB-GRPO Metrics:")
+if len(trainer.balance_history) > 0:
+    final_balance = trainer.balance_history[-1]
+    print(f"  Final Gini coefficient: {final_balance['gini_coefficient']:.4f}")
+    print(f"  Over-spending clusters: {final_balance['overspending_clusters']}/{cbgrpo_config.n_clusters}")
+    print(f"  Max/Min spend ratio: {final_balance['spend_ratio']:.2f}")
+print()
+print("Output locations:")
+print(f"  • Checkpoints: {checkpoint_dir}")
+print(f"  • Results: {results_dir}")
+print(f"  • Logs: {logs_dir}")
+print()
+print("Next steps:")
+print("  1. Run Cell 25 to evaluate CB-GRPO model")
+print("  2. Compare with vanilla GRPO results (Cell 22)")
+print("  3. Analyze balance history to understand capacity allocation")
+print("=" * 80)

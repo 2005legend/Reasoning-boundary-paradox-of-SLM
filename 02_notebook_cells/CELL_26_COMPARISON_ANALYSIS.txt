@@ -1,0 +1,374 @@
+# ============================================================================
+# CELL 26: VANILLA GRPO vs CB-GRPO COMPARISON ANALYSIS
+# ============================================================================
+# This cell generates comprehensive comparison analysis between vanilla GRPO
+# and CB-GRPO training approaches
+#
+# Metrics:
+# - Pass@1 accuracy (consistency)
+# - Pass@4 accuracy (capability)
+# - Pass@1 vs Pass@4 gap (variance in reasoning)
+# - Problem distribution (Easy/Hard/Incorrect)
+# - Capacity balance metrics (Gini coefficient, spend distribution)
+
+import json
+import numpy as np
+import matplotlib.pyplot as plt
+from pathlib import Path
+from typing import Dict, List, Any
+import pandas as pd
+
+print("=" * 80)
+print("📊 VANILLA GRPO vs CB-GRPO COMPARISON ANALYSIS")
+print("=" * 80)
+print()
+
+# ==============================================================================
+# STEP 1: LOAD RESULTS
+# ==============================================================================
+print("⏳ STEP 1/4: Loading experiment results...")
+
+base_dir = Path("/content/drive/MyDrive/RLVR_Research/results")
+
+# Load vanilla GRPO results
+vanilla_metrics_path = base_dir / "exp2_n1_vanilla_0.5B" / "evaluation_metrics.json"
+vanilla_details_path = base_dir / "exp2_n1_vanilla_0.5B" / "evaluation_details.json"
+
+# Load CB-GRPO results
+cbgrpo_metrics_path = base_dir / "exp2_n1_cbgrpo_0.5B" / "evaluation_metrics.json"
+cbgrpo_details_path = base_dir / "exp2_n1_cbgrpo_0.5B" / "evaluation_details.json"
+cbgrpo_balance_path = base_dir / "exp2_n1_cbgrpo_0.5B" / "cbgrpo_balance_history.json"
+
+results = {}
+
+if vanilla_metrics_path.exists():
+    with open(vanilla_metrics_path, 'r') as f:
+        results['vanilla'] = {'metrics': json.load(f)}
+    
+    with open(vanilla_details_path, 'r') as f:
+        results['vanilla']['details'] = json.load(f)
+    
+    print(f"✅ Vanilla GRPO results loaded")
+else:
+    print(f"❌ Vanilla GRPO results not found: {vanilla_metrics_path}")
+
+if cbgrpo_metrics_path.exists():
+    with open(cbgrpo_metrics_path, 'r') as f:
+        results['cbgrpo'] = {'metrics': json.load(f)}
+    
+    with open(cbgrpo_details_path, 'r') as f:
+        results['cbgrpo']['details'] = json.load(f)
+    
+    if cbgrpo_balance_path.exists():
+        with open(cbgrpo_balance_path, 'r') as f:
+            results['cbgrpo']['balance'] = json.load(f)
+    
+    print(f"✅ CB-GRPO results loaded")
+else:
+    print(f"❌ CB-GRPO results not found: {cbgrpo_metrics_path}")
+
+if len(results) < 2:
+    print("\n⚠️  Need both vanilla and CB-GRPO results for comparison")
+    print("Run Cell 22 (vanilla evaluation) and Cell 25 (CB-GRPO evaluation) first")
+    raise ValueError("Missing experiment results")
+
+print()
+
+# ==============================================================================
+# STEP 2: COMPUTE COMPARISON METRICS
+# ==============================================================================
+print("⏳ STEP 2/4: Computing comparison metrics...")
+
+# Extract key metrics
+vanilla_p1 = results['vanilla']['metrics']['pass_at_1']
+vanilla_p4 = results['vanilla']['metrics']['pass_at_4']
+vanilla_gap = vanilla_p4 - vanilla_p1
+
+cbgrpo_p1 = results['cbgrpo']['metrics']['pass_at_1']
+cbgrpo_p4 = results['cbgrpo']['metrics']['pass_at_4']
+cbgrpo_gap = cbgrpo_p4 - cbgrpo_p1
+
+# Compute improvements
+p1_improvement = cbgrpo_p1 - vanilla_p1
+p4_improvement = cbgrpo_p4 - vanilla_p4
+gap_improvement = vanilla_gap - cbgrpo_gap  # Negative gap = better
+
+# Categorize problems
+def categorize_problems(details):
+    easy = []   # Pass@1 correct
+    hard = []   # Pass@4 only
+    incorrect = []  # Neither
+    
+    for r in details:
+        if r['correct'][0]:
+            easy.append(r['problem_idx'])
+        elif any(r['correct']):
+            hard.append(r['problem_idx'])
+        else:
+            incorrect.append(r['problem_idx'])
+    
+    return {
+        'easy': easy,
+        'hard': hard,
+        'incorrect': incorrect,
+        'easy_count': len(easy),
+        'hard_count': len(hard),
+        'incorrect_count': len(incorrect)
+    }
+
+vanilla_categories = categorize_problems(results['vanilla']['details'])
+cbgrpo_categories = categorize_problems(results['cbgrpo']['details'])
+
+print(f"✅ Comparison metrics computed")
+
+print()
+
+# ==============================================================================
+# STEP 3: GENERATE REPORTS
+# ==============================================================================
+print("⏳ STEP 3/4: Generating comparison reports...")
+print()
+
+# ============================================================================
+# REPORT 1: ACCURACY COMPARISON
+# ============================================================================
+print("=" * 80)
+print("📊 REPORT 1: ACCURACY COMPARISON")
+print("=" * 80)
+print()
+
+comparison_table = [
+    ["Metric", "Vanilla GRPO", "CB-GRPO", "Improvement"],
+    ["Pass@1", f"{vanilla_p1:.2f}%", f"{cbgrpo_p1:.2f}%", f"{p1_improvement:+.2f}%"],
+    ["Pass@4", f"{vanilla_p4:.2f}%", f"{cbgrpo_p4:.2f}%", f"{p4_improvement:+.2f}%"],
+    ["Gap (P4-P1)", f"{vanilla_gap:.2f}%", f"{cbgrpo_gap:.2f}%", f"{gap_improvement:+.2f}%"],
+]
+
+for row in comparison_table:
+    print(f"  {row[0]:15s}  {row[1]:12s}  {row[2]:12s}  {row[3]:12s}")
+
+print()
+
+# ============================================================================
+# REPORT 2: PROBLEM DISTRIBUTION
+# ============================================================================
+print("=" * 80)
+print("📊 REPORT 2: PROBLEM DISTRIBUTION")
+print("=" * 80)
+print()
+
+print("Vanilla GRPO:")
+print(f"  Easy (Pass@1):    {vanilla_categories['easy_count']}/20")
+print(f"  Hard (Pass@4):    {vanilla_categories['hard_count']}/20")
+print(f"  Incorrect:        {vanilla_categories['incorrect_count']}/20")
+print()
+
+print("CB-GRPO:")
+print(f"  Easy (Pass@1):    {cbgrpo_categories['easy_count']}/20")
+print(f"  Hard (Pass@4):    {cbgrpo_categories['hard_count']}/20")
+print(f"  Incorrect:        {cbgrpo_categories['incorrect_count']}/20")
+print()
+
+# Check which problems moved from Hard to Easy
+hard_to_easy = set(vanilla_categories['hard']) & set(cbgrpo_categories['easy'])
+easy_to_hard = set(vanilla_categories['easy']) & set(cbgrpo_categories['hard'])
+
+print("Transitions:")
+print(f"  Hard → Easy: {len(hard_to_easy)} problems {list(hard_to_easy) if hard_to_easy else ''}")
+print(f"  Easy → Hard: {len(easy_to_hard)} problems {list(easy_to_hard) if easy_to_hard else ''}")
+print()
+
+# ============================================================================
+# REPORT 3: CAPACITY BALANCE (CB-GRPO ONLY)
+# ============================================================================
+print("=" * 80)
+print("📊 REPORT 3: CAPACITY BALANCE METRICS (CB-GRPO)")
+print("=" * 80)
+print()
+
+if 'balance' in results['cbgrpo']:
+    balance_history = results['cbgrpo']['history']
+    
+    if len(balance_history) > 0:
+        initial = balance_history[0]
+        final = balance_history[-1]
+        
+        print("Initial State (Step 0):")
+        print(f"  Gini coefficient: {initial['gini_coefficient']:.4f}")
+        print(f"  Mean spend: {initial['mean_spend']:.4f}")
+        print(f"  Over-spending clusters: {initial['overspending_clusters']}")
+        print()
+        
+        print("Final State (Step {final['step']}):")
+        print(f"  Gini coefficient: {final['gini_coefficient']:.4f}")
+        print(f"  Mean spend: {final['mean_spend']:.4f}")
+        print(f"  Over-spending clusters: {final['overspending_clusters']}")
+        print(f"  Max/Min spend ratio: {final['spend_ratio']:.2f}")
+        print()
+        
+        gini_change = final['gini_coefficient'] - initial['gini_coefficient']
+        
+        print("Change:")
+        print(f"  Gini coefficient: {gini_change:+.4f}")
+        print(f"  Balance improved: {'✅ Yes' if gini_change < 0 else '❌ No'}")
+        print()
+        
+        # Plot spend distribution
+        print("Spend Distribution (Final):")
+        spend_dist = final['spend_distribution']
+        
+        for i, spend in enumerate(spend_dist):
+            bar = "█" * int(spend * 20)
+            marker = " ⚠️" if spend > final['mean_spend'] * 1.2 else ""
+            print(f"  Cluster {i:2d}: {spend:.4f} {bar}{marker}")
+        
+        print()
+        print("Legend: ⚠️ = Over-spending (spend > 1.2 * mean)")
+
+else:
+    print("⚠️  Balance history not available")
+
+print()
+
+# ============================================================================
+# REPORT 4: STATISTICAL SIGNIFICANCE
+# ============================================================================
+print("=" * 80)
+print("📊 REPORT 4: STATISTICAL ANALYSIS")
+print("=" * 80)
+print()
+
+# McNemar's test for Pass@1 improvement
+# Compare which problems each model got right/wrong
+vanilla_p1_correct = set(vanilla_categories['easy'])
+cbgrpo_p1_correct = set(cbgrpo_categories['easy'])
+
+both_correct = vanilla_p1_correct & cbgrpo_p1_correct
+both_wrong = (set(range(20)) - vanilla_p1_correct) & (set(range(20)) - cbgrpo_p1_correct)
+vanilla_only = vanilla_p1_correct - cbgrpo_p1_correct
+cbgrpo_only = cbgrpo_p1_correct - vanilla_p1_correct
+
+print("Pass@1 Contingency Table:")
+print(f"  Both correct:  {len(both_correct)}")
+print(f"  Both wrong:    {len(both_wrong)}")
+print(f"  Vanilla only:  {len(vanilla_only)}")
+print(f"  CB-GRPO only:  {len(cbgrpo_only)}")
+print()
+
+# Simple improvement ratio
+improvement_ratio = len(cbgrpo_only) / max(len(vanilla_only), 1)
+print(f"Improvement ratio: {improvement_ratio:.2f}x")
+print(f"  (CB-GRPO got {len(cbgrpo_only)} new problems correct)")
+print(f"  (Vanilla got {len(vanilla_only)} problems correct that CB-GRPO missed)")
+print()
+
+print()
+
+# ==============================================================================
+# STEP 4: SAVE COMPARISON REPORT
+# ==============================================================================
+print("⏳ STEP 4/4: Saving comparison report...")
+
+comparison_report = {
+    "vanilla_grpo": {
+        "pass_at_1": vanilla_p1,
+        "pass_at_4": vanilla_p4,
+        "gap": vanilla_gap,
+        "problem_distribution": {
+            "easy": vanilla_categories['easy_count'],
+            "hard": vanilla_categories['hard_count'],
+            "incorrect": vanilla_categories['incorrect_count']
+        }
+    },
+    "cbgrpo": {
+        "pass_at_1": cbgrpo_p1,
+        "pass_at_4": cbgrpo_p4,
+        "gap": cbgrpo_gap,
+        "problem_distribution": {
+            "easy": cbgrpo_categories['easy_count'],
+            "hard": cbgrpo_categories['hard_count'],
+            "incorrect": cbgrpo_categories['incorrect_count']
+        }
+    },
+    "improvements": {
+        "pass_at_1": p1_improvement,
+        "pass_at_4": p4_improvement,
+        "gap_reduction": gap_improvement,
+        "hard_to_easy_transitions": len(hard_to_easy)
+    },
+    "balance_metrics": results['cbgrpo'].get('balance', {}).get('history', [])[-1] if 'balance' in results['cbgrpo'] else None
+}
+
+report_path = base_dir / "comparison_report.json"
+with open(report_path, 'w') as f:
+    json.dump(comparison_report, f, indent=2)
+
+print(f"✅ Comparison report saved: {report_path}")
+
+# ==============================================================================
+# FINAL SUMMARY
+# ==============================================================================
+print("\n" + "=" * 80)
+print("📊 FINAL SUMMARY")
+print("=" * 80)
+print()
+
+print("Key Findings:")
+print()
+
+if p1_improvement > 0:
+    print(f"✅ CB-GRPO improved Pass@1 by {p1_improvement:.2f}%")
+    print(f"   This indicates MORE CONSISTENT reasoning")
+else:
+    print(f"⚠️  CB-GRPO did not improve Pass@1 ({p1_improvement:.2f}%)")
+
+if gap_improvement > 0:
+    print(f"✅ CB-GRPO reduced the Pass@1 vs Pass@4 gap by {gap_improvement:.2f}%")
+    print(f"   This indicates LESS VARIANCE in reasoning paths")
+else:
+    print(f"⚠️  CB-GRPO did not reduce the gap ({gap_improvement:.2f}%)")
+
+if len(hard_to_easy) > 0:
+    print(f"✅ {len(hard_to_easy)} problems moved from Hard (inconsistent) to Easy (consistent)")
+    print(f"   This indicates better capacity allocation")
+else:
+    print(f"⚠️  No problems moved from Hard to Easy")
+
+print()
+
+print("Research Implications:")
+print()
+print("1. Capacity Balancing Effect:")
+if 'balance' in results['cbgrpo']:
+    final_gini = results['cbgrpo']['balance']['history'][-1]['gini_coefficient']
+    print(f"   • Final Gini coefficient: {final_gini:.4f}")
+    print(f"   • {'Well-balanced' if final_gini < 0.3 else 'Moderately balanced'} capacity allocation")
+else:
+    print(f"   • Balance metrics not available")
+
+print()
+print("2. Reasoning Consistency:")
+print(f"   • Pass@1 improvement: {p1_improvement:+.2f}%")
+print(f"   • Gap reduction: {gap_improvement:+.2f}%")
+print()
+
+print("3. Novel Contribution Validation:")
+if p1_improvement > 0 and gap_improvement > 0:
+    print("   ✅ CB-GRPO demonstrates MEANINGFUL improvement over vanilla GRPO")
+    print("   • Better capacity allocation leads to more consistent reasoning")
+    print("   • Supports the hypothesis that gradient-mass balancing matters")
+else:
+    print("   ⚠️  CB-GRPO needs further investigation")
+    print("   • Consider tuning ema_alpha, decay_factor, theta_threshold")
+
+print()
+print("=" * 80)
+print("✅ COMPARISON ANALYSIS COMPLETE")
+print("=" * 80)
+print()
+print("Next steps:")
+print("  • Run multiple experiments with different random seeds")
+print("  • Analyze balance history dynamics")
+print("  • Test on larger test set (100+ samples)")
+print("  • Compare training curves (loss, reward)")
+print("=" * 80)

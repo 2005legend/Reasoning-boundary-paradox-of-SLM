@@ -1,0 +1,118 @@
+# ============================================================================
+# 🚀 PRE-FLIGHT CHECKLIST - Run this before training!
+# ============================================================================
+# Copy this entire cell into your Colab notebook as Cell 20
+
+import sys
+import torch
+from pathlib import Path
+import shutil
+
+print("=" * 80)
+print("🚀 PRE-FLIGHT CHECKLIST FOR REAL TRAINING")
+print("=" * 80)
+print()
+
+checks_passed = 0
+checks_total = 8
+
+# 1. Environment Check
+print("1. Environment Check...")
+try:
+    import google.colab
+    print("   ✅ Running in Google Colab")
+    checks_passed += 1
+except ImportError:
+    print("   ⚠️  Not in Colab - using local environment")
+    checks_passed += 1
+
+# 2. GPU Check
+print("\n2. GPU Check...")
+if torch.cuda.is_available():
+    gpu_name = torch.cuda.get_device_name(0)
+    vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+    print(f"   ✅ GPU: {gpu_name}")
+    print(f"   ✅ VRAM: {vram_gb:.1f} GB")
+    if vram_gb >= 14:
+        print("   ✅ Sufficient for 1.5B model")
+    else:
+        print("   ⚠️  Use 0.5B model (VRAM < 14GB)")
+    checks_passed += 1
+else:
+    print("   ❌ NO GPU - Enable: Runtime > Change runtime type > GPU")
+
+# 3. Packages
+print("\n3. Package Check...")
+if "transformers" in sys.modules and "trl" in sys.modules:
+    print("   ✅ Core packages loaded")
+    checks_passed += 1
+else:
+    print("   ⚠️  Run Cell 2 to install packages")
+
+# 4. Drive
+print("\n4. Google Drive...")
+if Path("/content/drive/MyDrive/RLVR_Research").exists():
+    print("   ✅ Drive mounted")
+    checks_passed += 1
+else:
+    print("   ⚠️  Using local storage")
+    checks_passed += 1
+
+# 5. Datasets
+print("\n5. Datasets...")
+if "gsm8k_train" in globals():
+    count = gsm8k_train["count"]
+    print(f"   ✅ GSM8K loaded: {count} problems")
+    checks_passed += 1
+else:
+    print("   ⚠️  Run Cell 5 to load datasets")
+
+# 6. Clustering
+print("\n6. Clustering...")
+if "cluster_assignments" in globals():
+    print(f"   ✅ Clusters: {len(set(cluster_assignments.values()))}")
+    checks_passed += 1
+else:
+    print("   ⚠️  Run Cell 7 for clustering")
+
+# 7. Config
+print("\n7. Configuration System...")
+if "ExperimentConfig" in globals():
+    print("   ✅ Config system ready")
+    checks_passed += 1
+else:
+    print("   ⚠️  Run Cell 4 for configs")
+
+# 8. Disk Space
+print("\n8. Disk Space...")
+try:
+    path = "/content/drive/MyDrive" if Path("/content/drive").exists() else "/content"
+    stat = shutil.disk_usage(path)
+    free_gb = stat.free / (1024**3)
+    print(f"   ✅ Free space: {free_gb:.1f} GB")
+    checks_passed += 1
+except:
+    checks_passed += 1
+
+# Summary
+print("\n" + "=" * 80)
+print("SUMMARY")
+print("=" * 80)
+print(f"Checks passed: {checks_passed}/{checks_total}")
+print()
+
+if checks_passed >= 6:
+    print("✅ READY FOR TRAINING!")
+    print("\nNext step: Run Cell 21 (Training execution)")
+    print("\nRecommended:")
+    print("  1. Start with SMOKE TEST (30-60 min)")
+    print("  2. Use 0.5B model first")
+    print("  3. Monitor GPU and logs")
+else:
+    print("⚠️  FIX ISSUES ABOVE FIRST")
+    print("\nActions needed:")
+    print("  - Ensure GPU runtime enabled")
+    print("  - Run all setup cells (1-19)")
+    print("  - Mount Google Drive")
+
+print("=" * 80)

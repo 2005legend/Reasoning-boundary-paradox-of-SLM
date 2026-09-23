@@ -1,0 +1,383 @@
+# ============================================================================
+# NEW SESSION QUICKSTART - CB-GRPO TRAINING ONLY
+# ============================================================================
+# This guide shows exactly which cells to run in a fresh Colab session
+# to train CB-GRPO without accidentally re-training vanilla GRPO
+
+IMPORTANT: This assumes you're using Account 2 with fresh session
+
+# ==============================================================================
+# STEP 0: BEFORE STARTING (One-time setup)
+# ==============================================================================
+
+Before opening Colab, ensure these files are in your Drive:
+
+1. Upload CB-GRPO modules to:
+   /content/drive/MyDrive/RLVR_Research/modules/
+   ├── cbgrpo_config.py
+   ├── cbgrpo_trainer.py
+   └── cell6_clustering.py
+
+2. Copy cluster assignments from Account 1:
+   /content/drive/MyDrive/RLVR_Research/cluster_assignments.pkl
+
+3. (Optional) Copy vanilla GRPO results for comparison:
+   /content/drive/MyDrive/RLVR_Research/results/exp2_n1_vanilla_0.5B/
+
+# ==============================================================================
+# STEP 1: CELLS TO RUN (IN ORDER)
+# ==============================================================================
+
+OPEN: rlvr_training_pipeline.ipynb in Google Colab
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 1: ENVIRONMENT SETUP (10 minutes)                                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+✅ RUN Cell 1: Google Drive mounting
+   - Mounts drive
+   - Creates directory structure
+
+✅ RUN Cell 2: Package installation
+   - Installs: torch, transformers, trl, peft, datasets
+   - Installs: sentence-transformers, sklearn, torchao
+   - Takes 2-3 minutes
+
+✅ RUN Cell 3: Import statements
+   - Imports all required libraries
+
+✅ RUN Cell 4: ExperimentConfig class definition
+   - Defines configuration dataclass
+   - CRITICAL for training setup
+
+✅ RUN Cell 5: Model loading functions
+   - Defines load_quantized_model()
+   - Required for loading Qwen models
+
+✅ RUN Cell 6: GSM8K dataset loading
+   - Loads training and test datasets
+   - REQUIRED for all training
+
+❌ SKIP Cell 7-19: Other utility cells
+   - Not needed for CB-GRPO
+   - Saves time
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 2: CLUSTERING SETUP (5 minutes)                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+✅ RUN Cell for cluster loading (INSERT THIS CELL):
+
+```python
+# ============================================================================
+# CLUSTER ASSIGNMENTS VERIFICATION
+# ============================================================================
+
+import pickle
+from pathlib import Path
+
+print("=" * 60)
+print("CLUSTER ASSIGNMENTS VERIFICATION")
+print("=" * 60)
+
+cluster_file = Path("/content/drive/MyDrive/RLVR_Research/cluster_assignments.pkl")
+
+if cluster_file.exists():
+    with open(cluster_file, 'rb') as f:
+        cluster_data = pickle.load(f)
+    
+    cluster_assignments = cluster_data['assignments']
+    n_clusters = cluster_data['n_clusters']
+    
+    print(f"✅ Loaded {len(cluster_assignments)} cluster assignments")
+    print(f"   Number of clusters: {n_clusters}")
+    print(f"   Embedding model: {cluster_data.get('embedding_model', 'N/A')}")
+else:
+    print(f"❌ Cluster file not found: {cluster_file}")
+    print("\nACTION REQUIRED:")
+    print("  1. Copy cluster_assignments.pkl from Account 1")
+    print("  2. Place it in: /content/drive/MyDrive/RLVR_Research/")
+    raise FileNotFoundError("cluster_assignments.pkl not found")
+
+print("=" * 60)
+```
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 3: CB-GRPO MODULES SETUP (2 minutes)                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+✅ RUN Cell to add modules path (INSERT THIS CELL):
+
+```python
+# ============================================================================
+# CB-GRPO MODULES SETUP
+# ============================================================================
+
+import sys
+from pathlib import Path
+
+print("=" * 60)
+print("CB-GRPO MODULES SETUP")
+print("=" * 60)
+
+# Add modules directory to path
+modules_dir = Path("/content/drive/MyDrive/RLVR_Research/modules")
+modules_dir.mkdir(parents=True, exist_ok=True)
+
+sys.path.insert(0, str(modules_dir))
+
+# Verify modules exist
+required_modules = ['cbgrpo_config.py', 'cbgrpo_trainer.py', 'cell6_clustering.py']
+missing = []
+
+for module in required_modules:
+    module_path = modules_dir / module
+    if module_path.exists():
+        print(f"✅ Found: {module}")
+    else:
+        print(f"❌ Missing: {module}")
+        missing.append(module)
+
+if missing:
+    print("\nACTION REQUIRED:")
+    print("Upload these files to your Drive:")
+    for m in missing:
+        print(f"  - {m}")
+    print(f"\nDestination: {modules_dir}")
+    raise FileNotFoundError(f"Missing modules: {missing}")
+
+# Import modules
+try:
+    from cbgrpo_config import CBGRPOConfig, create_cbgrpo_config_from_experiment
+    from cbgrpo_trainer import CBGRPOTrainer
+    print("\n✅ CB-GRPO modules imported successfully!")
+except ImportError as e:
+    print(f"\n❌ Import failed: {e}")
+    raise
+
+print("=" * 60)
+```
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 4: EXPERIMENT CONFIGURATION (2 minutes)                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+✅ RUN Cell to set experiment config (INSERT THIS CELL):
+
+```python
+# ============================================================================
+# EXPERIMENT CONFIGURATION
+# ============================================================================
+
+from dataclasses import dataclass
+from typing import List, Optional
+
+@dataclass
+class ExperimentConfig:
+    """Configuration for RLVR experiments."""
+    exp_name: str
+    model_size: str
+    gate_type: str
+    training_steps: int
+    batch_size: int = 2
+    gradient_accumulation_steps: int = 4
+    learning_rate: float = 5e-6
+    lr_scheduler_type: str = "cosine"
+    warmup_ratio: float = 0.1
+    checkpoint_interval: int = 100
+    eval_interval: int = 100
+    log_interval: int = 10
+    rollouts_per_prompt: int = 4
+    max_new_tokens: int = 512
+    temperature: float = 0.7
+    top_p: float = 0.9
+    lora_r: int = 16
+    lora_alpha: int = 32
+    lora_target_modules: List[str] = None
+    random_seed: int = 42
+    
+    def __post_init__(self):
+        if self.lora_target_modules is None:
+            self.lora_target_modules = ["q_proj", "v_proj", "k_proj", "o_proj"]
+    
+    def to_dict(self):
+        return self.__dict__
+
+# Set experiment configuration
+EXPERIMENT_NAME = "exp2_n1_cbgrpo_0.5B"
+USE_SMOKE_TIER = True  # Set to False for full training (800 steps)
+
+# Create config
+if USE_SMOKE_TIER:
+    config = ExperimentConfig(
+        exp_name=f"{EXPERIMENT_NAME}_smoke",
+        model_size="0.5B",
+        gate_type="vanilla",
+        training_steps=100,
+        checkpoint_interval=50,
+        batch_size=2,
+        gradient_accumulation_steps=4
+    )
+else:
+    config = ExperimentConfig(
+        exp_name=EXPERIMENT_NAME,
+        model_size="0.5B",
+        gate_type="vanilla",
+        training_steps=800,
+        checkpoint_interval=100
+    )
+
+print("=" * 60)
+print("EXPERIMENT CONFIGURATION")
+print("=" * 60)
+print(f"Experiment: {config.exp_name}")
+print(f"Model: Qwen2.5-{config.model_size}-Instruct")
+print(f"Training steps: {config.training_steps}")
+print(f"Smoke tier: {USE_SMOKE_TIER}")
+print("=" * 60)
+```
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 5: CB-GRPO CONFIGURATION (2 minutes)                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+✅ RUN Cell 23: CB-GRPO Configuration
+   - Copy from: 02_notebook_cells/CELL_23_CBGRPO_CONFIG.txt
+   - Or run this simplified version:
+
+```python
+# ============================================================================
+# CB-GRPO CONFIGURATION
+# ============================================================================
+
+print("=" * 60)
+print("CB-GRPO CONFIGURATION")
+print("=" * 60)
+
+# CB-GRPO specific parameters
+N_CLUSTERS = 16
+EMA_ALPHA = 0.01
+DECAY_FACTOR = 0.9
+THETA_THRESHOLD = 1.2
+BALANCE_WINDOW = 50
+
+# Create CB-GRPO config
+cbgrpo_config = CBGRPOConfig(
+    n_clusters=N_CLUSTERS,
+    ema_alpha=EMA_ALPHA,
+    decay_factor=DECAY_FACTOR,
+    theta_threshold=THETA_THRESHOLD,
+    balance_window=BALANCE_WINDOW,
+    track_perplexity=True,
+    
+    # Training parameters
+    output_dir=f"/content/drive/MyDrive/RLVR_Research/checkpoints/{config.exp_name}",
+    max_steps=config.training_steps,
+    per_device_train_batch_size=config.batch_size,
+    gradient_accumulation_steps=config.gradient_accumulation_steps,
+    learning_rate=config.learning_rate,
+    lr_scheduler_type=config.lr_scheduler_type,
+    warmup_ratio=config.warmup_ratio,
+    num_generation_per_prompt=config.rollouts_per_prompt,
+    max_new_tokens=config.max_new_tokens,
+    temperature=config.temperature,
+    top_p=config.top_p,
+    save_steps=config.checkpoint_interval,
+    logging_steps=config.log_interval,
+    save_total_limit=3,
+    gradient_checkpointing=True,
+    fp16=True,
+    remove_unused_columns=False,
+    report_to="none",
+    seed=config.random_seed
+)
+
+print(f"✅ CB-GRPO config created")
+print(f"   n_clusters: {cbgrpo_config.n_clusters}")
+print(f"   ema_alpha: {cbgrpo_config.ema_alpha}")
+print(f"   decay_factor: {cbgrpo_config.decay_factor}")
+print(f"   theta_threshold: {cbgrpo_config.theta_threshold}")
+print(f"   training_steps: {cbgrpo_config.max_steps}")
+print("=" * 60)
+```
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 6: TRAINING (2-4 hours)                                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+✅ RUN Cell 24: CB-GRPO Training
+   - Copy from: 02_notebook_cells/CELL_24_CBGRPO_TRAINING.txt
+   - Takes 2-4 hours (or 30-60 min for smoke tier)
+
+❌ DO NOT RUN Cells 20-22 (Vanilla GRPO)
+   - These will re-train the old model
+   - SKIP COMPLETELY
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 7: EVALUATION (30-60 minutes)                                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+✅ RUN Cell 25: CB-GRPO Evaluation
+   - Copy from: 02_notebook_cells/CELL_25_CBGRPO_EVALUATION.txt
+   - Takes 30-60 minutes
+
+✅ RUN Cell 26: Comparison Analysis
+   - Copy from: 02_notebook_cells/CELL_26_COMPARISON_ANALYSIS.txt
+   - Takes 5 minutes
+
+# ==============================================================================
+# SUMMARY: MINIMUM CELLS TO RUN
+# ==============================================================================
+
+REQUIRED CELLS (in order):
+1. Cell 1: Drive mounting
+2. Cell 2: Package installation
+3. Cell 3: Imports
+4. Cell 4: ExperimentConfig class
+5. Cell 5: Model loading functions
+6. Cell 6: GSM8K dataset loading
+7. NEW CELL: Cluster verification
+8. NEW CELL: CB-GRPO modules setup
+9. NEW CELL: Experiment configuration
+10. NEW CELL: CB-GRPO configuration
+11. Cell 24: CB-GRPO training
+12. Cell 25: CB-GRPO evaluation
+13. Cell 26: Comparison analysis
+
+TOTAL TIME: ~3-5 hours
+
+# ==============================================================================
+# CELLS TO SKIP (DO NOT RUN)
+# ==============================================================================
+
+❌ Cells 7-19: Utility functions (not needed)
+❌ Cells 20-22: Vanilla GRPO (already trained in Account 1)
+❌ Any cell that starts with "vanilla" or "exp2_n1_vanilla"
+
+# ==============================================================================
+# VERIFICATION CHECKLIST
+# ==============================================================================
+
+Before running Cell 24, verify:
+
+□ Drive mounted at /content/drive
+□ Modules uploaded to /content/drive/MyDrive/RLVR_Research/modules/
+□ cluster_assignments.pkl exists
+□ gsm8k_train loaded successfully
+□ cbgrpo_config created successfully
+□ EXPERIMENT_NAME = "exp2_n1_cbgrpo_0.5B" (NOT vanilla)
+
+If all ✅, proceed with Cell 24!
+
+# ==============================================================================
+# EMERGENCY STOP
+# ==============================================================================
+
+If you accidentally start vanilla GRPO training:
+1. Click "Runtime" → "Interrupt execution"
+2. Clear GPU memory: Runtime → "Factory reset runtime"
+3. Start fresh from Cell 1
+
+To prevent this:
+- Always check EXPERIMENT_NAME before running
+- Make sure it says "cbgrpo" not "vanilla"

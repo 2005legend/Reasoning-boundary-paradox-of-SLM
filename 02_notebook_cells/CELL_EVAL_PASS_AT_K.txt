@@ -1,0 +1,333 @@
+# ============================================================================
+# CB-GRPO / VANILLA / BASE EVALUATION — Pass@k on held-out sets (Colab)
+# ============================================================================
+# Evaluates 3 models:
+#   1. Base model (Qwen2.5-0.5B-Instruct) - loaded directly from HuggingFace
+#   2. Vanilla GRPO 0.5B - trained with standard GRPO + correctness reward
+#   3. CB-GRPO 0.5B - trained with Capacity-Balanced GRPO
+#
+# Upload trained models to Google Drive first:
+#   /content/drive/MyDrive/vanilla_0.5B_final_model/final_model/
+#   /content/drive/MyDrive/cbgrpo_final_model/final_model/
+# ============================================================================
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+# Install required packages
+import subprocess
+import sys
+print("⏳ Installing required packages...")
+packages = [
+    "bitsandbytes>=0.46.1",
+    "accelerate",
+    "transformers",
+    "peft",
+    "datasets"
+]
+for pkg in packages:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", pkg], check=True)
+print("✅ Packages installed\n")
+
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+import torch, re, json, random
+from pathlib import Path
+from datetime import datetime
+from math import comb
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from peft import PeftModel
+from datasets import load_dataset
+
+assert torch.cuda.is_available(), "❌ No GPU visible — fix runtime before evaluating!"
+print(f"✅ GPU: {torch.cuda.get_device_name(0)}")
+
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
+N_EVAL_PROBLEMS = 30      # keep small given time budget
+N_SAMPLES = 16            # n for Pass@k (k up to 16)
+K_VALUES = [1, 4, 8, 16]
+SEED = 42
+
+# Checkpoint paths (update these based on your Drive structure)
+# NOTE: Vanilla has DOUBLE nested folders in Drive
+CHECKPOINTS = {
+    "base_0.5B": None,  # Load base model directly from HuggingFace (no training)
+    "vanilla_0.5B": "/content/drive/MyDrive/exp2_n1_vanilla_0.5B-20260911T061946Z-1-001/exp2_n1_vanilla_0.5B/final_model",
+    "cbgrpo_0.5B": "/content/drive/MyDrive/cbgrpo_final_model/final_model",
+}
+
+# =============================================================================
+# VERIFY ALL CHECKPOINTS EXIST BEFORE STARTING EVAL
+# =============================================================================
+print("=" * 80)
+print("🔍 VERIFYING CHECKPOINT PATHS")
+print("=" * 80)
+
+all_valid = True
+for exp_name, ckpt_path in CHECKPOINTS.items():
+    if exp_name == "base_0.5B":
+        print(f"✅ {exp_name}: Will load from HuggingFace (no checkpoint needed)")
+    elif ckpt_path is None:
+        print(f"⚠️  {exp_name}: Path is None")
+        all_valid = False
+    elif not Path(ckpt_path).exists():
+        print(f"❌ {exp_name}: NOT FOUND at {ckpt_path}")
+        all_valid = False
+        # List parent directory to help debug
+        parent = Path(ckpt_path).parent
+        if parent.exists():
+            print(f"   Parent directory contents:")
+            for item in parent.iterdir():
+                print(f"     - {item.name}")
+        else:
+            print(f"   Parent directory also doesn't exist: {parent}")
+    else:
+        # Check for required files
+        required_files = ["adapter_config.json", "adapter_model.safetensors"]
+        missing = [f for f in required_files if not (Path(ckpt_path) / f).exists()]
+        if missing:
+            print(f"⚠️  {exp_name}: Found at {ckpt_path} but missing files: {missing}")
+            all_valid = False
+        else:
+            print(f"✅ {exp_name}: Found at {ckpt_path}")
+            print(f"   Files present: {', '.join([f.name for f in Path(ckpt_path).iterdir() if f.is_file()][:5])}")
+
+print("=" * 80)
+
+if not all_valid:
+    print("\n❌ ERROR: Some checkpoints are missing or incomplete!")
+    print("Please fix the paths above before continuing.")
+    print("\nTo fix:")
+    print("1. Check that folders are uploaded to Google Drive")
+    print("2. Verify the CHECKPOINTS paths match your Drive structure")
+    print("3. Make sure adapter files are in the final_model folders")
+    raise SystemExit("Checkpoint verification failed")
+else:
+    print("✅ All checkpoints verified! Starting evaluation...\n")
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+def unbiased_pass_at_k(n, c, k):
+    """Compute unbiased Pass@k estimator."""
+    if n - c < k:
+        return 1.0
+    return 1.0 - comb(n - c, k) / comb(n, k)
+
+def load_model_forced_gpu(checkpoint_path=None):
+    """Load model on GPU with 4-bit quantization."""
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.float16,
+        bnb_4bit_use_double_quant=True
+    )
+    model = AutoModelForCausalLM.from_pretrained(
+        MODEL_NAME,
+        quantization_config=bnb_config,
+        device_map={"": 0},  # forces cuda:0
+        trust_remote_code=True,
+    )
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    
+    if checkpoint_path is not None:
+        print(f"  Loading LoRA adapters from: {checkpoint_path}")
+        model = PeftModel.from_pretrained(model, checkpoint_path)
+    else:
+        print(f"  Using base model (no training)")
+    
+    model.eval()
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"✅ Model loaded on {next(model.parameters()).device}")
+    print(f"   Total params: {total_params:,} | Trainable: {trainable_params:,}")
+    return model, tokenizer
+
+def format_prompt(problem):
+    return f"""Solve this math problem step by step.
+
+Problem: {problem}
+
+Provide your answer in this format:
+<reasoning>
+[Your reasoning]
+</reasoning>
+<answer>
+[Final number]
+</answer>
+
+Solution:"""
+
+def extract_answer(completion):
+    m = re.search(r'<answer>\s*(-?\d+(?:[,\.\d]*)?)\s*</answer>', completion, re.IGNORECASE)
+    return m.group(1).replace(',', '') if m else None
+
+def check_correct(extracted, ground_truth):
+    if extracted is None:
+        return False
+    try:
+        return abs(float(extracted) - float(str(ground_truth).replace(',', ''))) < 1e-4
+    except ValueError:
+        return False
+
+@torch.no_grad()
+def generate_n_samples(model, tokenizer, prompt, n, max_new_tokens=400, temperature=1.0):
+    """Generate n samples in one batched call (much faster than looping)."""
+    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    outputs = model.generate(
+        **inputs,
+        max_new_tokens=max_new_tokens,
+        do_sample=True,
+        temperature=temperature,
+        top_p=0.95,
+        num_return_sequences=n,
+        pad_token_id=tokenizer.pad_token_id,
+    )
+    input_len = inputs['input_ids'].shape[1]
+    return [tokenizer.decode(o[input_len:], skip_special_tokens=True) for o in outputs]
+
+def parse_gsm8k_answer(answer_text):
+    return answer_text.split('####')[-1].strip().replace(',', '') if '####' in answer_text else ""
+
+def run_eval(model, tokenizer, problems, ground_truths, dataset_name, exp_name):
+    """Run Pass@k evaluation on a dataset."""
+    results = {
+        "experiment": exp_name,
+        "dataset": dataset_name,
+        "n_samples": N_SAMPLES,
+        "per_problem": [],
+        "timestamp": str(datetime.now())
+    }
+    all_pass_at_k = {k: [] for k in K_VALUES}
+
+    for i, (prob, gt) in enumerate(zip(problems, ground_truths)):
+        completions = generate_n_samples(model, tokenizer, format_prompt(prob), N_SAMPLES)
+        correct_flags = [check_correct(extract_answer(c), gt) for c in completions]
+        c = sum(correct_flags)
+        problem_pass_at_k = {k: unbiased_pass_at_k(N_SAMPLES, c, k) for k in K_VALUES}
+        for k in K_VALUES:
+            all_pass_at_k[k].append(problem_pass_at_k[k])
+
+        results["per_problem"].append({
+            "problem": prob,
+            "ground_truth": gt,
+            "n_correct": c,
+            "pass_at_k": problem_pass_at_k,
+        })
+        if (i + 1) % 5 == 0:
+            running = {k: sum(v)/len(v) for k, v in all_pass_at_k.items()}
+            print(f"  [{i+1}/{len(problems)}] running Pass@k: "
+                  f"{', '.join(f'{k}={v:.2f}' for k,v in running.items())}")
+
+    results["aggregate_pass_at_k"] = {k: sum(v)/len(v) for k, v in all_pass_at_k.items()}
+    return results
+
+# =============================================================================
+# MAIN EVALUATION
+# =============================================================================
+print("\n⏳ Loading eval datasets...")
+random.seed(SEED)
+
+# Load GSM8K test set
+gsm8k_test = load_dataset("openai/gsm8k", "main", split="test")
+gsm8k_idx = random.sample(range(len(gsm8k_test)), N_EVAL_PROBLEMS)
+gsm8k_problems = [gsm8k_test[i]["question"] for i in gsm8k_idx]
+gsm8k_answers = [parse_gsm8k_answer(gsm8k_test[i]["answer"]) for i in gsm8k_idx]
+
+# Load MATH-500 test set
+math500 = load_dataset("HuggingFaceH4/MATH-500", split="test")
+math_idx = random.sample(range(len(math500)), min(N_EVAL_PROBLEMS, len(math500)))
+math_problems = [math500[i]["problem"] for i in math_idx]
+math_answers = [math500[i]["answer"] for i in math_idx]
+
+print(f"✅ Loaded {len(gsm8k_problems)} GSM8K + {len(math_problems)} MATH-500 problems\n")
+
+# Run eval for each checkpoint
+all_results = {}
+for exp_name, ckpt_path in CHECKPOINTS.items():
+    # Skip if checkpoint doesn't exist (unless it's base model which loads from HF)
+    if ckpt_path is not None and not Path(ckpt_path).exists():
+        print(f"⚠️ Skipping {exp_name} - checkpoint not found: {ckpt_path}")
+        continue
+    
+    print(f"\n{'='*80}\n🔬 EVALUATING: {exp_name}\n{'='*80}")
+    
+    if exp_name == "base_0.5B":
+        print("Loading base model directly from HuggingFace (no training)...")
+        model, tokenizer = load_model_forced_gpu(checkpoint_path=None)
+    else:
+        model, tokenizer = load_model_forced_gpu(ckpt_path)
+
+    print(f"\n⏳ GSM8K ({len(gsm8k_problems)} problems)...")
+    gsm8k_res = run_eval(model, tokenizer, gsm8k_problems, gsm8k_answers, "gsm8k_test", exp_name)
+
+    print(f"\n⏳ MATH-500 ({len(math_problems)} problems)...")
+    math_res = run_eval(model, tokenizer, math_problems, math_answers, "math500_test", exp_name)
+
+    all_results[exp_name] = {"gsm8k": gsm8k_res, "math500": math_res}
+
+    # Save results
+    out_path = Path(f"/content/drive/MyDrive/results/eval_{exp_name}.json")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w") as f:
+        json.dump(all_results[exp_name], f, indent=2)
+    print(f"✅ Saved: {out_path}")
+
+    del model
+    torch.cuda.empty_cache()
+
+# =============================================================================
+# FINAL COMPARISON TABLE
+# =============================================================================
+if len(all_results) > 1:
+    print(f"\n{'='*80}\n📊 FINAL COMPARISON: Base → Vanilla GRPO → CB-GRPO\n{'='*80}")
+    
+    for dataset_key, dataset_label in [("gsm8k", "GSM8K (in-distribution)"), 
+                                        ("math500", "MATH-500 (out-of-distribution)")]:
+        print(f"\n{dataset_label}:")
+        
+        # Header
+        print(f"  {'Pass@k':<10}", end="")
+        for exp_name in ["base_0.5B", "vanilla_0.5B", "cbgrpo_0.5B"]:
+            if exp_name in all_results:
+                print(f"{exp_name:<15}", end="")
+        print()
+        
+        print("  " + "-" * 70)
+        
+        # Data rows
+        for k in K_VALUES:
+            print(f"  {k:<10}", end="")
+            for exp_name in ["base_0.5B", "vanilla_0.5B", "cbgrpo_0.5B"]:
+                if exp_name in all_results:
+                    val = all_results[exp_name][dataset_key]["aggregate_pass_at_k"][k]
+                    print(f"{val:>14.3f}", end="")
+            print()
+        
+        # Compute deltas if we have all 3
+        if all(k in all_results for k in ["base_0.5B", "vanilla_0.5B", "cbgrpo_0.5B"]):
+            print(f"\n  Improvements over Base:")
+            print(f"  {'Pass@k':<10}{'Vanilla Δ':<15}{'CB-GRPO Δ':<15}")
+            print("  " + "-" * 70)
+            for k in K_VALUES:
+                base_val = all_results["base_0.5B"][dataset_key]["aggregate_pass_at_k"][k]
+                vanilla_delta = all_results["vanilla_0.5B"][dataset_key]["aggregate_pass_at_k"][k] - base_val
+                cbgrpo_delta = all_results["cbgrpo_0.5B"][dataset_key]["aggregate_pass_at_k"][k] - base_val
+                print(f"  {k:<10}{vanilla_delta:>+14.3f}{cbgrpo_delta:>+14.3f}")
+else:
+    print(f"\n{'='*80}\n📊 RESULTS\n{'='*80}")
+    for exp_name, results in all_results.items():
+        print(f"\n{exp_name}:")
+        for dataset_key in ["gsm8k", "math500"]:
+            print(f"  {dataset_key}:")
+            for k in K_VALUES:
+                val = results[dataset_key]["aggregate_pass_at_k"][k]
+                print(f"    Pass@{k}: {val:.3f}")
+
+print("\n✅ Evaluation complete!")

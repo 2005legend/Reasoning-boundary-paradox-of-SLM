@@ -1,0 +1,236 @@
+# ============================================================================
+# CELL 23: CB-GRPO PRE-FLIGHT CONFIGURATION
+# ============================================================================
+# This cell sets up CB-GRPO (Capacity-Balanced GRPO) training configuration
+# 
+# Novel Contribution:
+# - Tracks cumulative gradient-mass spend per cluster via EMA
+# - Applies soft decay to over-spending clusters
+# - Balances capacity allocation across reasoning patterns
+
+import torch
+import gc
+import json
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Any
+
+print("=" * 80)
+print("🧠 CB-GRPO PRE-FLIGHT CONFIGURATION")
+print("=" * 80)
+print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print("=" * 80)
+print()
+
+# ==============================================================================
+# STEP 1: LOAD CBGRPO MODULES
+# ==============================================================================
+print("⏳ STEP 1/5: Loading CB-GRPO modules...")
+
+# Add current directory to path (for Colab)
+import sys
+sys.path.insert(0, '/content/drive/MyDrive/RLVR_Research')
+
+try:
+    from cbgrpo_config import CBGRPOConfig, create_cbgrpo_config_from_experiment
+    from cbgrpo_trainer import CBGRPOTrainer
+    print("✅ CB-GRPO modules loaded")
+except ImportError as e:
+    print(f"❌ Import failed: {e}")
+    print("\nThis is expected if running in Colab.")
+    print("Will copy the modules to Drive in next step.")
+    
+    # Create modules directory
+    modules_dir = Path("/content/drive/MyDrive/RLVR_Research/modules")
+    modules_dir.mkdir(parents=True, exist_ok=True)
+    
+    print(f"\n📁 Created modules directory: {modules_dir}")
+    print("   Copy cbgrpo_config.py and cbgrpo_trainer.py to this directory")
+    print("   Then re-run this cell")
+
+print()
+
+# ==============================================================================
+# STEP 2: EXPERIMENT SELECTION
+# ==============================================================================
+print("⏳ STEP 2/5: Selecting experiment...")
+
+# SELECT YOUR EXPERIMENT (uncomment ONE):
+EXPERIMENT_NAME = "exp2_n1_cbgrpo_0.5B"  # Novel algorithm (2-4 hours)
+# EXPERIMENT_NAME = "exp2_n1_cbgrpo_1.5B"  # Novel at scale (4-6 hours)
+
+# Override to smoke tier for quick validation (30-60 min)
+USE_SMOKE_TIER = True  # Set to False for full training
+
+print(f"Experiment: {EXPERIMENT_NAME}")
+print(f"Smoke tier: {USE_SMOKE_TIER}")
+print()
+
+# ==============================================================================
+# STEP 3: CAPACITY BALANCING PARAMETERS
+# ==============================================================================
+print("⏳ STEP 3/5: Configuring capacity balancing parameters...")
+print()
+print("CB-GRPO Parameters:")
+print("─" * 80)
+
+# These are the key hyperparameters for CB-GRPO
+# You can tune these to optimize balance
+
+N_CLUSTERS = 16              # Number of prompt clusters (should match Cell 6)
+EMA_ALPHA = 0.01             # EMA decay rate for spend tracking
+                             # Lower = longer memory (0.01-0.05 recommended)
+
+DECAY_FACTOR = 0.9           # Decay for over-spending clusters
+                             # Must be < 1.0 (0.85-0.95 recommended)
+
+THETA_THRESHOLD = 1.2        # Threshold multiplier for population mean
+                             # Clusters with spend > theta * mean are penalized
+                             # (1.1-1.5 recommended)
+
+BALANCE_WINDOW = 50          # Steps between balance logging
+TRACK_PERPLEXITY = True      # Track perplexity per cluster (adds overhead)
+
+print(f"  n_clusters:        {N_CLUSTERS}")
+print(f"  ema_alpha:         {EMA_ALPHA} (memory: {'long' if EMA_ALPHA < 0.02 else 'medium'})")
+print(f"  decay_factor:      {DECAY_FACTOR} (penalty: {'strong' if DECAY_FACTOR < 0.9 else 'moderate'})")
+print(f"  theta_threshold:   {THETA_THRESHOLD} (sensitivity: {'high' if THETA_THRESHOLD < 1.2 else 'medium'})")
+print(f"  balance_window:    {BALANCE_WINDOW} steps")
+print(f"  track_perplexity:  {TRACK_PERPLEXITY}")
+print("─" * 80)
+print()
+
+# ==============================================================================
+# STEP 4: CREATE CONFIGURATION
+# ==============================================================================
+print("⏳ STEP 4/5: Creating CB-GRPO configuration...")
+
+# Get base experiment config
+try:
+    base_config = get_config(EXPERIMENT_NAME.replace('cbgrpo', 'vanilla'))
+    
+    # Override to smoke tier if requested
+    if USE_SMOKE_TIER:
+        base_config.training_steps = 100
+        base_config.checkpoint_interval = 50
+        base_config.eval_interval = 50
+        EXPERIMENT_NAME = f"{EXPERIMENT_NAME}_smoke"
+    
+    print(f"✅ Base config loaded: {base_config.exp_name}")
+    
+    # Create CB-GRPO config
+    cbgrpo_config = create_cbgrpo_config_from_experiment(
+        experiment_name=EXPERIMENT_NAME,
+        base_config=base_config,
+        n_clusters=N_CLUSTERS,
+        ema_alpha=EMA_ALPHA,
+        decay_factor=DECAY_FACTOR,
+        theta_threshold=THETA_THRESHOLD,
+        balance_window=BALANCE_WINDOW,
+        track_perplexity=TRACK_PERPLEXITY
+    )
+    
+    print(f"✅ CB-GRPO config created")
+    print(f"   Output dir: {cbgrpo_config.output_dir}")
+    
+except Exception as e:
+    print(f"❌ Config creation failed: {e}")
+    print("\nFalling back to manual config creation...")
+    
+    # Manual fallback
+    cbgrpo_config = CBGRPOConfig(
+        n_clusters=N_CLUSTERS,
+        ema_alpha=EMA_ALPHA,
+        decay_factor=DECAY_FACTOR,
+        theta_threshold=THETA_THRESHOLD,
+        balance_window=BALANCE_WINDOW,
+        track_perplexity=TRACK_PERPLEXITY,
+        output_dir=f"/content/drive/MyDrive/RLVR_Research/checkpoints/{EXPERIMENT_NAME}",
+        max_steps=100 if USE_SMOKE_TIER else 800,
+        per_device_train_batch_size=2,
+        gradient_accumulation_steps=4,
+        learning_rate=5e-6,
+        num_generation_per_prompt=4,
+        max_new_tokens=512,
+        temperature=0.7,
+        save_steps=50 if USE_SMOKE_TIER else 100,
+        logging_steps=10
+    )
+    
+    print(f"✅ Manual config created")
+
+print()
+
+# ==============================================================================
+# STEP 5: VALIDATE CONFIGURATION
+# ==============================================================================
+print("⏳ STEP 5/5: Validating configuration...")
+
+# Validate parameters
+try:
+    assert cbgrpo_config.ema_alpha > 0 and cbgrpo_config.ema_alpha <= 1
+    assert cbgrpo_config.decay_factor > 0 and cbgrpo_config.decay_factor < 1
+    assert cbgrpo_config.theta_threshold > 1.0
+    assert cbgrpo_config.n_clusters > 0
+    print("✅ All parameters valid")
+except AssertionError as e:
+    print(f"❌ Parameter validation failed: {e}")
+    raise
+
+# Save configuration
+config_save_path = Path(cbgrpo_config.output_dir).parent.parent / "results" / EXPERIMENT_NAME / "cbgrpo_config.json"
+config_save_path.parent.mkdir(parents=True, exist_ok=True)
+cbgrpo_config.save(str(config_save_path))
+print(f"✅ Config saved: {config_save_path}")
+
+# Convert to GRPOConfig for trainer
+grpo_config = cbgrpo_config.to_grpo_config()
+print(f"✅ Converted to GRPOConfig for trainer")
+
+print()
+
+# ==============================================================================
+# SUMMARY
+# ==============================================================================
+print("=" * 80)
+print("✅ CB-GRPO PRE-FLIGHT COMPLETE")
+print("=" * 80)
+print()
+print("Configuration Summary:")
+print("─" * 80)
+print(f"  Experiment:        {EXPERIMENT_NAME}")
+print(f"  Training steps:    {cbgrpo_config.max_steps}")
+print(f"  Batch size:        {cbgrpo_config.per_device_train_batch_size}")
+print(f"  Gradient accum:    {cbgrpo_config.gradient_accumulation_steps}")
+print(f"  Effective batch:   {cbgrpo_config.per_device_train_batch_size * cbgrpo_config.gradient_accumulation_steps}")
+print(f"  Learning rate:     {cbgrpo_config.learning_rate}")
+print(f"  Rollouts/prompt:   {cbgrpo_config.num_generation_per_prompt}")
+print()
+print("CB-GRPO Parameters:")
+print("─" * 80)
+print(f"  n_clusters:        {cbgrpo_config.n_clusters}")
+print(f"  ema_alpha:         {cbgrpo_config.ema_alpha}")
+print(f"  decay_factor:      {cbgrpo_config.decay_factor}")
+print(f"  theta_threshold:   {cbgrpo_config.theta_threshold}")
+print("─" * 80)
+print()
+print("Next Steps:")
+print("  1. Ensure cluster_assignments.pkl exists from Cell 6")
+print("  2. Run Cell 24 to start CB-GRPO training")
+print("  3. Monitor balance metrics during training")
+print()
+print("=" * 80)
+print()
+print("📊 Key Differences from Vanilla GRPO:")
+print()
+print("  Vanilla GRPO:")
+print("    • Uniform weighting across all clusters")
+print("    • No memory of training history")
+print("    • Easy clusters can dominate gradient updates")
+print()
+print("  CB-GRPO (Novel):")
+print("    • Tracks cumulative spend via EMA")
+print("    • Soft decay for over-spending clusters")
+print("    • Balances capacity allocation across reasoning patterns")
+print()
+print("=" * 80)

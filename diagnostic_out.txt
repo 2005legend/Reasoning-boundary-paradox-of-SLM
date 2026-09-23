@@ -1,0 +1,12 @@
+✅ Core imports OK
+✅ config module defined
+✅ rewards module defined
+✅ data module defined
+✅ clustering module defined
+✅ evaluation module defined
+✅ diagnostics module defined
+✅ gates module defined (VanillaGate, CBGRPOGate, OSELFGate, CompositeGate)
+✅ model_utils module defined
+✅ grpo_core module defined
+✅ train_helpers defined (PromptSampler, checkpointing, Pass@k eval)
+Modules loaded successfully, starting diagnostic...

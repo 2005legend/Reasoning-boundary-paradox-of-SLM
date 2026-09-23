@@ -1,0 +1,275 @@
+# ============================================================================
+# CELL 0: CB-GRPO MASTER SETUP (Run this FIRST in new session)
+# ============================================================================
+# This single cell handles all setup needed for CB-GRPO training
+# Run this ONCE at the start of a new Colab session
+
+import subprocess
+import sys
+from pathlib import Path
+import pickle
+
+print("=" * 80)
+print("🚀 CB-GRPO MASTER SETUP")
+print("=" * 80)
+print()
+
+# ==============================================================================
+# STEP 1: MOUNT GOOGLE DRIVE
+# ==============================================================================
+print("⏳ STEP 1/8: Mounting Google Drive...")
+
+try:
+    from google.colab import drive
+    drive.mount("/content/drive", force_remount=False)
+    print("✅ Drive mounted")
+except Exception as e:
+    print(f"⚠️  Drive mount: {e}")
+
+# ==============================================================================
+# STEP 2: INSTALL PACKAGES
+# ==============================================================================
+print("\n⏳ STEP 2/8: Installing required packages...")
+
+packages = [
+    "torch",
+    "transformers>=4.40.0",
+    "trl>=0.12.0",
+    "peft>=0.11.0",
+    "datasets",
+    "accelerate",
+    "sentence-transformers",
+    "scikit-learn",
+    "matplotlib",
+    "torchao --upgrade"
+]
+
+for pkg in packages:
+    print(f"   Installing {pkg}...")
+    result = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-q"] + pkg.split(),
+        capture_output=True
+    )
+
+print("✅ Packages installed")
+
+# ==============================================================================
+# STEP 3: CREATE DIRECTORY STRUCTURE
+# ==============================================================================
+print("\n⏳ STEP 3/8: Creating directory structure...")
+
+base_dir = Path("/content/drive/MyDrive/RLVR_Research")
+dirs_to_create = [
+    base_dir / "checkpoints",
+    base_dir / "results",
+    base_dir / "logs",
+    base_dir / "modules"
+]
+
+for d in dirs_to_create:
+    d.mkdir(parents=True, exist_ok=True)
+
+print(f"✅ Directories created in: {base_dir}")
+
+# ==============================================================================
+# STEP 4: UPLOAD CB-GRPO MODULES
+# ==============================================================================
+print("\n⏳ STEP 4/8: Setting up CB-GRPO modules...")
+
+modules_dir = base_dir / "modules"
+sys.path.insert(0, str(modules_dir))
+
+required_modules = {
+    'cbgrpo_config.py': 'Configuration class for CB-GRPO',
+    'cbgrpo_trainer.py': 'Trainer with capacity balancing',
+    'cell6_clustering.py': 'Prompt clustering utilities'
+}
+
+print(f"\n   Required modules in: {modules_dir}")
+print("   " + "─" * 70)
+
+missing_modules = []
+for module, description in required_modules.items():
+    module_path = modules_dir / module
+    if module_path.exists():
+        print(f"   ✅ {module:25s} - {description}")
+    else:
+        print(f"   ❌ {module:25s} - MISSING")
+        missing_modules.append(module)
+
+if missing_modules:
+    print("\n" + "=" * 80)
+    print("⚠️  ACTION REQUIRED: Upload missing modules")
+    print("=" * 80)
+    print("\nUpload these files to your Google Drive:")
+    for m in missing_modules:
+        print(f"  • {m}")
+    print(f"\nDestination: {modules_dir}")
+    print("\nYou can find these files in your local folder:")
+    print("  03_cbgrpo_implementation/")
+    print("\nOr create them manually by running the cell below.")
+    print("=" * 80)
+
+# ==============================================================================
+# STEP 5: VERIFY CLUSTER ASSIGNMENTS
+# ==============================================================================
+print("\n⏳ STEP 5/8: Verifying cluster assignments...")
+
+cluster_file = base_dir / "cluster_assignments.pkl"
+
+if cluster_file.exists():
+    with open(cluster_file, 'rb') as f:
+        cluster_data = pickle.load(f)
+    
+    cluster_assignments = cluster_data['assignments']
+    n_clusters = cluster_data['n_clusters']
+    
+    print(f"✅ Cluster assignments loaded")
+    print(f"   Total prompts: {len(cluster_assignments)}")
+    print(f"   Number of clusters: {n_clusters}")
+else:
+    print(f"❌ Cluster file not found: {cluster_file}")
+    print("\n   ACTION REQUIRED:")
+    print("   Copy cluster_assignments.pkl from Account 1 to:")
+    print(f"   {cluster_file}")
+
+# ==============================================================================
+# STEP 6: IMPORT LIBRARIES
+# ==============================================================================
+print("\n⏳ STEP 6/8: Importing libraries...")
+
+import torch
+import json
+import gc
+from datetime import datetime
+from typing import List, Dict, Any
+from dataclasses import dataclass
+
+# Transformers and TRL
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    TrainingArguments,
+    BitsAndBytesConfig
+)
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training, PeftModel
+from datasets import Dataset, load_dataset
+from trl import GRPOTrainer, GRPOConfig
+
+print("✅ Libraries imported")
+
+# ==============================================================================
+# STEP 7: DEFINE EXPERIMENT CONFIG
+# ==============================================================================
+print("\n⏳ STEP 7/8: Defining experiment configuration...")
+
+@dataclass
+class ExperimentConfig:
+    """Configuration for RLVR experiments."""
+    exp_name: str
+    model_size: str
+    gate_type: str
+    training_steps: int
+    batch_size: int = 2
+    gradient_accumulation_steps: int = 4
+    learning_rate: float = 5e-6
+    lr_scheduler_type: str = "cosine"
+    warmup_ratio: float = 0.1
+    checkpoint_interval: int = 100
+    eval_interval: int = 100
+    log_interval: int = 10
+    rollouts_per_prompt: int = 4
+    max_new_tokens: int = 512
+    temperature: float = 0.7
+    top_p: float = 0.9
+    lora_r: int = 16
+    lora_alpha: int = 32
+    lora_target_modules: List[str] = None
+    random_seed: int = 42
+    
+    def __post_init__(self):
+        if self.lora_target_modules is None:
+            self.lora_target_modules = ["q_proj", "v_proj", "k_proj", "o_proj"]
+    
+    def to_dict(self):
+        return self.__dict__
+
+print("✅ ExperimentConfig defined")
+
+# ==============================================================================
+# STEP 8: SET EXPERIMENT PARAMETERS
+# ==============================================================================
+print("\n⏳ STEP 8/8: Setting experiment parameters...")
+
+# ⚠️ IMPORTANT: These control which model gets trained
+EXPERIMENT_NAME = "exp2_n1_cbgrpo_0.5B"  # CB-GRPO (NOT vanilla!)
+USE_SMOKE_TIER = True  # Set to False for full training (800 steps)
+
+# Create config
+if USE_SMOKE_TIER:
+    config = ExperimentConfig(
+        exp_name=f"{EXPERIMENT_NAME}_smoke",
+        model_size="0.5B",
+        gate_type="cbgrpo",
+        training_steps=100,
+        checkpoint_interval=50,
+        batch_size=2,
+        gradient_accumulation_steps=4
+    )
+else:
+    config = ExperimentConfig(
+        exp_name=EXPERIMENT_NAME,
+        model_size="0.5B",
+        gate_type="cbgrpo",
+        training_steps=800,
+        checkpoint_interval=100
+    )
+
+print("✅ Experiment configured")
+
+# ==============================================================================
+# FINAL SUMMARY
+# ==============================================================================
+print("\n" + "=" * 80)
+print("✅ CB-GRPO SETUP COMPLETE!")
+print("=" * 80)
+print()
+print("Configuration:")
+print(f"  Experiment:    {config.exp_name}")
+print(f"  Model:         Qwen2.5-{config.model_size}-Instruct")
+print(f"  Training mode: {'SMOKE TEST (100 steps)' if USE_SMOKE_TIER else 'FULL (800 steps)'}")
+print(f"  Training time: {'~30-60 min' if USE_SMOKE_TIER else '~2-4 hours'}")
+print()
+print("Status:")
+print(f"  {'✅' if len(missing_modules) == 0 else '❌'} CB-GRPO modules")
+print(f"  {'✅' if cluster_file.exists() else '❌'} Cluster assignments")
+print()
+print("Next Steps:")
+print("  1. Load GSM8K dataset (run Cell 6 from notebook)")
+print("  2. Run CB-GRPO configuration (Cell 23)")
+print("  3. Run CB-GRPO training (Cell 24)")
+print()
+print("⚠️  DO NOT RUN:")
+print("  • Cells 20-22 (vanilla GRPO) - Already trained!")
+print("  • Any cell with 'vanilla' in the name")
+print()
+print("=" * 80)
+
+# ==============================================================================
+# OPTIONAL: CREATE MODULES IF MISSING
+# ==============================================================================
+
+if missing_modules:
+    print("\n" + "=" * 80)
+    print("📦 CREATE MISSING MODULES")
+    print("=" * 80)
+    print("\nRun this cell to create the missing modules:")
+    print()
+    print("```python")
+    print("# Cell to create missing modules")
+    print("# Copy from: 03_cbgrpo_implementation/")
+    print("```")
+    print()
+    print("Or manually upload them to:")
+    print(f"  {modules_dir}")
+    print("=" * 80)

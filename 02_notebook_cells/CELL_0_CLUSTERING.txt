@@ -1,0 +1,170 @@
+# ============================================================================
+# CELL 0: CLUSTERING - Create cluster_assignments.pkl
+# ============================================================================
+# Run this ONCE before training to create cluster assignments
+# This will save to: /content/drive/MyDrive/RLVR_Research/cluster_assignments.pkl
+
+import subprocess
+import sys
+
+print("=" * 80)
+print("🔬 CLUSTERING CELL - Creating cluster_assignments.pkl")
+print("=" * 80)
+print()
+
+# Install required packages
+print("⏳ Installing required packages...")
+packages = [
+    "sentence-transformers",
+    "scikit-learn",
+]
+
+for pkg in packages:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", pkg], check=True)
+
+print("✅ Packages installed")
+print()
+
+from sentence_transformers import SentenceTransformer
+from sklearn.cluster import KMeans
+import numpy as np
+import pickle
+from pathlib import Path
+from datasets import load_dataset
+from collections import Counter
+
+# Configuration
+N_CLUSTERS = 16
+EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+OUTPUT_FILE = "/content/drive/MyDrive/RLVR_Research/cluster_assignments.pkl"
+
+print(f"Configuration:")
+print(f"  Clusters: {N_CLUSTERS}")
+print(f"  Model: {EMBEDDING_MODEL}")
+print(f"  Output: {OUTPUT_FILE}")
+print()
+
+# ==============================================================================
+# STEP 1: LOAD GSM8K DATASET
+# ==============================================================================
+print("⏳ STEP 1/4: Loading GSM8K dataset...")
+
+gsm8k_train = load_dataset('openai/gsm8k', 'main', split='train')
+problems = [item['question'] for item in gsm8k_train]
+
+print(f"✅ Loaded {len(problems)} problems")
+print()
+
+# ==============================================================================
+# STEP 2: EMBED PROMPTS
+# ==============================================================================
+print("⏳ STEP 2/4: Embedding prompts...")
+print("  (This may take 2-3 minutes)")
+
+model = SentenceTransformer(EMBEDDING_MODEL)
+embeddings = model.encode(
+    problems,
+    show_progress_bar=True,
+    batch_size=32,
+    convert_to_numpy=True
+)
+
+print(f"✅ Embeddings computed: {embeddings.shape}")
+print()
+
+# ==============================================================================
+# STEP 3: CLUSTER WITH KMEANS
+# ==============================================================================
+print(f"⏳ STEP 3/4: Clustering with KMeans (k={N_CLUSTERS})...")
+
+kmeans = KMeans(
+    n_clusters=N_CLUSTERS,
+    random_state=42,
+    n_init=10,
+    max_iter=300,
+    verbose=0
+)
+
+cluster_labels = kmeans.fit_predict(embeddings)
+
+print(f"✅ Clustering complete")
+print(f"  Inertia: {kmeans.inertia_:.2f}")
+print(f"  Iterations: {kmeans.n_iter_}")
+print()
+
+# ==============================================================================
+# STEP 4: SAVE CLUSTER ASSIGNMENTS
+# ==============================================================================
+print("⏳ STEP 4/4: Saving cluster assignments...")
+
+# Create assignments dictionary
+cluster_assignments = {
+    problem: int(cluster_id)
+    for problem, cluster_id in zip(problems, cluster_labels)
+}
+
+# Prepare data to save
+cluster_data = {
+    'assignments': cluster_assignments,
+    'n_clusters': N_CLUSTERS,
+    'embedding_model': EMBEDDING_MODEL,
+    'cluster_centers': kmeans.cluster_centers_,
+    'inertia': kmeans.inertia_,
+    'n_iter': kmeans.n_iter_
+}
+
+# Save to Drive
+output_path = Path(OUTPUT_FILE)
+output_path.parent.mkdir(parents=True, exist_ok=True)
+
+with open(output_path, 'wb') as f:
+    pickle.dump(cluster_data, f)
+
+file_size_kb = output_path.stat().st_size / 1024
+
+print(f"✅ Saved to: {OUTPUT_FILE}")
+print(f"  File size: {file_size_kb:.2f} KB")
+print()
+
+# ==============================================================================
+# DISPLAY CLUSTER DISTRIBUTION
+# ==============================================================================
+print("=" * 80)
+print("CLUSTER SIZE DISTRIBUTION")
+print("=" * 80)
+print()
+
+cluster_counts = Counter(cluster_assignments.values())
+cluster_sizes = [cluster_counts.get(i, 0) for i in range(N_CLUSTERS)]
+
+mean_size = np.mean(cluster_sizes)
+std_size = np.std(cluster_sizes)
+min_size = np.min(cluster_sizes)
+max_size = np.max(cluster_sizes)
+
+print(f"Statistics:")
+print(f"  Total problems: {len(problems)}")
+print(f"  Mean cluster size: {mean_size:.1f}")
+print(f"  Std deviation: {std_size:.1f}")
+print(f"  Min size: {min_size}")
+print(f"  Max size: {max_size}")
+print()
+
+print("Per-Cluster Breakdown:")
+print("  Cluster ID | Size | Percentage | Bar")
+print("  " + "-" * 56)
+
+for cluster_id in range(N_CLUSTERS):
+    count = cluster_sizes[cluster_id]
+    percentage = (count / len(problems)) * 100
+    bar_length = int(percentage / 2)
+    bar = "█" * bar_length
+    print(f"  {cluster_id:10d} | {count:4d} | {percentage:6.2f}%   | {bar}")
+
+print()
+print("=" * 80)
+print("✅ CLUSTERING COMPLETE!")
+print("=" * 80)
+print()
+print("Next step: Run the CB-GRPO training cell")
+print("=" * 80)

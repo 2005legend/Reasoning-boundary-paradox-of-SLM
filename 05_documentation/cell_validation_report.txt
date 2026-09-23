@@ -1,0 +1,133 @@
+DETAILED CELL VALIDATION REPORT
+================================================================================
+
+Cell 1 (notebook index 2):
+  Status: PASS
+  Lines: 33
+  Characters: 962
+  Imports: os, pathlib, google
+  Features: Google Drive mounting
+
+Cell 2 (notebook index 4):
+  Status: PASS
+  Lines: 28
+  Characters: 715
+  Imports: subprocess, sys
+  Features: Package installation
+
+Cell 3 (notebook index 6):
+  Status: PASS
+  Lines: 136
+  Characters: 5362
+  Imports: torch, subprocess
+  Features: GPU verification
+
+Cell 4 (notebook index 8):
+  Status: PASS
+  Lines: 700
+  Characters: 25688
+  Imports: dataclasses, typing, json, pathlib
+  Features: Configuration system, Clustering, Gate implementation, Pass@k evaluation, Checkpointing, 14 functions
+
+Cell 5 (notebook index 10):
+  Status: PASS
+  Lines: 211
+  Characters: 7438
+  Imports: datasets, re, typing, time
+  Features: Dataset loading
+
+Cell 6 (notebook index 12):
+  Status: PASS
+  Lines: 138
+  Characters: 5110
+  Imports: typing
+
+Cell 7 (notebook index 14):
+  Status: PASS
+  Lines: 347
+  Characters: 13262
+  Imports: sentence_transformers, sklearn, numpy, pickle, pathlib, typing, matplotlib, collections
+  Features: Package installation, Clustering
+
+Cell 8 (notebook index 16):
+  Status: PASS
+  Lines: 347
+  Characters: 12637
+  Imports: datasets, typing, time, importlib, re
+  Features: Dataset loading, XML parser
+
+Cell 9 (notebook index 18):
+  Status: PASS
+  Lines: 128
+  Characters: 4816
+  Imports: torch, gc, transformers, peft, time
+  Features: GPU verification, Model loading, Checkpointing
+
+Cell 10 (notebook index 20):
+  Status: PASS
+  Lines: 171
+  Characters: 6387
+  Imports: re, xml, typing, hypothesis
+  Features: XML parser
+
+Cell 11 (notebook index 22):
+  Status: PASS
+  Lines: 146
+  Characters: 5360
+  Imports: abc, typing, numpy, random
+  Features: Clustering, Gate implementation, 13 functions, 7 classes
+
+Cell 12 (notebook index 24):
+  Status: PASS
+  Lines: 119
+  Characters: 4186
+  Imports: math, numpy, typing, scipy, tqdm
+  Features: Pass@k evaluation
+
+Cell 13 (notebook index 26):
+  Status: PASS
+  Lines: 119
+  Characters: 4372
+  Imports: os, json, shutil, dataclasses, pathlib, typing
+  Features: Pass@k evaluation, Checkpointing
+
+Cell 14 (notebook index 28):
+  Status: PASS
+  Lines: 43
+  Characters: 1705
+  Features: Pass@k evaluation
+
+Cell 15 (notebook index 30):
+  Status: PASS
+  Lines: 69
+  Characters: 2230
+  Imports: torch, trl, peft, datasets
+  Features: Gate implementation, Checkpointing
+
+Cell 16 (notebook index 32):
+  Status: PASS
+  Lines: 57
+  Characters: 1972
+  Imports: torch, trl, peft, datasets
+  Features: Clustering, Gate implementation, Checkpointing
+
+Cell 17 (notebook index 34):
+  Status: PASS
+  Lines: 66
+  Characters: 2408
+  Imports: torch, trl, peft, datasets, numpy
+  Features: Gate implementation, Pass@k evaluation, Checkpointing
+
+Cell 18 (notebook index 36):
+  Status: PASS
+  Lines: 61
+  Characters: 1959
+  Imports: matplotlib, seaborn, pandas, pathlib
+  Features: Clustering, Checkpointing
+
+Cell 19 (notebook index 38):
+  Status: MAGIC
+  Lines: 62
+  Characters: 2167
+  Features: Jupyter magic command
+

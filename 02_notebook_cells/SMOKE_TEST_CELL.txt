@@ -1,0 +1,165 @@
+# ============================================================================
+# 🚀 SMOKE TEST - 30-60 Minutes
+# ============================================================================
+# Copy this entire cell into Colab as Cell 21 to start training!
+
+import torch
+import gc
+from datetime import datetime
+from datasets import Dataset
+from trl import GRPOTrainer, GRPOConfig
+from peft import LoraConfig
+
+# Clear GPU
+if torch.cuda.is_available():
+    torch.cuda.empty_cache()
+    gc.collect()
+
+print("=" * 80)
+print("🧪 SMOKE TEST: Quick Pipeline Validation")
+print("=" * 80)
+print(f"Start time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print()
+
+# ==============================================================================
+# STEP 1: Load Model
+# ==============================================================================
+print("\n⏳ STEP 1/5: Loading 0.5B model with QLoRA...")
+model, tokenizer = load_quantized_model("0.5B")
+print("✅ Model loaded!")
+
+# ==============================================================================
+# STEP 2: Create Config
+# ==============================================================================
+print("\n⏳ STEP 2/5: Creating smoke test config...")
+smoke_config = ExperimentConfig.from_compute_tier(
+    exp_name="smoke_test_vanilla_0.5B",
+    model_size="0.5B",
+    gate_type="VanillaGate",
+    compute_tier="smoke",  # Only 100 steps
+    batch_size=8,
+    gradient_accumulation_steps=1
+)
+
+print(f"✅ Config created:")
+print(f"   Training steps: {smoke_config.training_steps}")
+print(f"   Batch size: {smoke_config.batch_size}")
+print(f"   Expected time: 30-60 minutes")
+
+# ==============================================================================
+# STEP 3: Prepare Dataset
+# ==============================================================================
+print("\n⏳ STEP 3/5: Preparing dataset (subset of 500 problems)...")
+
+# Use subset for smoke test
+train_subset = [
+    {"prompt": p, "answer": a}
+    for p, a in zip(
+        gsm8k_train['problems'][:500],
+        gsm8k_train['answers'][:500]
+    )
+]
+
+train_dataset = Dataset.from_list(train_subset)
+print(f"✅ Dataset prepared: {len(train_dataset)} problems")
+
+# ==============================================================================
+# STEP 4: Setup Trainer
+# ==============================================================================
+print("\n⏳ STEP 4/5: Initializing GRPO Trainer...")
+
+# Output directory
+output_dir = f"/content/drive/MyDrive/RLVR_Research/checkpoints/{smoke_config.exp_name}"
+
+# Training arguments
+training_args = GRPOConfig(
+    output_dir=output_dir,
+    num_train_epochs=1,
+    per_device_train_batch_size=smoke_config.batch_size,
+    gradient_accumulation_steps=smoke_config.gradient_accumulation_steps,
+    max_steps=smoke_config.training_steps,  # 100 steps
+    learning_rate=smoke_config.learning_rate,
+    save_steps=50,  # Checkpoint every 50 steps
+    logging_steps=10,
+    evaluation_strategy="no",
+    save_strategy="steps",
+    beta=0.1,  # KL penalty
+    remove_unused_columns=False,
+    report_to="none",  # Disable wandb/tensorboard for smoke test
+)
+
+# LoRA config
+peft_config = LoraConfig(
+    r=smoke_config.lora_r,
+    lora_alpha=smoke_config.lora_alpha,
+    target_modules=smoke_config.lora_target_modules,
+    task_type="CAUSAL_LM",
+    bias="none"
+)
+
+# Create trainer
+trainer = GRPOTrainer(
+    model=model,
+    args=training_args,
+    train_dataset=train_dataset,
+    peft_config=peft_config,
+    tokenizer=tokenizer,
+)
+
+print("✅ Trainer initialized!")
+print(f"   Output dir: {output_dir}")
+print(f"   Checkpoint every 50 steps")
+
+# ==============================================================================
+# STEP 5: TRAIN!
+# ==============================================================================
+print("\n" + "=" * 80)
+print("🔥 STEP 5/5: STARTING TRAINING")
+print("=" * 80)
+print()
+print("This will take 30-60 minutes. You can:")
+print("  - Watch the progress bar")
+print("  - Monitor GPU usage (bottom right)")
+print("  - Check logs below")
+print()
+print("Training will save checkpoints to Drive every 50 steps.")
+print("If interrupted, you can resume from last checkpoint.")
+print()
+print("=" * 80)
+
+# START TRAINING!
+trainer.train()
+
+# ==============================================================================
+# COMPLETE!
+# ==============================================================================
+print("\n" + "=" * 80)
+print("✅ SMOKE TEST COMPLETE!")
+print("=" * 80)
+print(f"End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print()
+print("What happened:")
+print(f"  ✅ Trained for {smoke_config.training_steps} steps")
+print(f"  ✅ Saved 2 checkpoints to Drive")
+print(f"  ✅ Model adapters saved")
+print()
+print("Next steps:")
+print("  1. ✅ Check logs above for any errors")
+print("  2. ✅ Verify checkpoints in Google Drive:")
+print(f"     {output_dir}")
+print("  3. ✅ If successful, you can run:")
+print("     - Standard 0.5B training (2-4 hours)")
+print("     - CB-GRPO training (2-4 hours)")
+print("     - Full 1.5B experiments (4-6 hours each)")
+print()
+print("To run standard training, uncomment OPTION 2 in the cell below.")
+print("=" * 80)
+
+# Display checkpoint locations
+print("\n📁 Checkpoints saved to:")
+print(f"   {output_dir}/checkpoint-50")
+print(f"   {output_dir}/checkpoint-100")
+print()
+print("To load a checkpoint later:")
+print("   from peft import PeftModel")
+print(f"   model = PeftModel.from_pretrained(base_model, '{output_dir}/checkpoint-100')")

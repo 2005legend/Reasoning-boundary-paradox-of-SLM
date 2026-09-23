@@ -1,0 +1,382 @@
+# ============================================================================
+# CELL 21: PRODUCTION TRAINING EXECUTION
+# ============================================================================
+# Copy this ENTIRE cell into your Colab notebook
+# This is production-grade, research-ready implementation
+
+import torch
+import gc
+import json
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Any, Optional
+from dataclasses import asdict
+
+# TRL imports
+from trl import GRPOTrainer, GRPOConfig
+from transformers import TrainingArguments
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+from datasets import Dataset
+
+# ==============================================================================
+# CONFIGURATION SELECTION
+# ==============================================================================
+
+# SELECT YOUR EXPERIMENT (uncomment ONE):
+EXPERIMENT_NAME = "exp2_n1_vanilla_0.5B"  # Start here (2-4 hours)
+# EXPERIMENT_NAME = "exp2_n1_vanilla_1.5B"  # After 0.5B succeeds (4-6 hours)
+# EXPERIMENT_NAME = "exp2_n1_cbgrpo_0.5B"  # Novel algorithm (2-4 hours)
+# EXPERIMENT_NAME = "exp2_n1_cbgrpo_1.5B"  # Novel at scale (4-6 hours)
+
+# Override to smoke tier for quick validation (30-60 min)
+USE_SMOKE_TIER = True  # Set to False for full training
+
+print("=" * 80)
+print("🚀 PRODUCTION TRAINING EXECUTION")
+print("=" * 80)
+print(f"Experiment: {EXPERIMENT_NAME}")
+print(f"Smoke tier: {USE_SMOKE_TIER}")
+print(f"Start time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print("=" * 80)
+print()
+
+# ==============================================================================
+# STEP 1: LOAD CONFIGURATION
+# ==============================================================================
+print("\n⏳ STEP 1/7: Loading experiment configuration...")
+
+try:
+    config = get_config(EXPERIMENT_NAME)
+    
+    # Override to smoke tier if requested
+    if USE_SMOKE_TIER:
+        config.training_steps = 100
+        config.checkpoint_interval = 50
+        config.eval_interval = 50
+        config.exp_name = f"{config.exp_name}_smoke"
+    
+    print(f"✅ Config loaded: {config.exp_name}")
+    print(f"   Model: {config.model_size}")
+    print(f"   Gate: {config.gate_type}")
+    print(f"   Steps: {config.training_steps}")
+    print(f"   Batch size: {config.batch_size}")
+    print(f"   Gradient accum: {config.gradient_accumulation_steps}")
+    
+except Exception as e:
+    print(f"❌ Config loading failed: {e}")
+    raise
+
+# ==============================================================================
+# STEP 2: PREPARE OUTPUT DIRECTORIES
+# ==============================================================================
+print("\n⏳ STEP 2/7: Preparing output directories...")
+
+base_dir = Path("/content/drive/MyDrive/RLVR_Research")
+if not base_dir.exists():
+    base_dir = Path("./RLVR_Research")
+    base_dir.mkdir(exist_ok=True)
+
+checkpoint_dir = base_dir / "checkpoints" / config.exp_name
+results_dir = base_dir / "results" / config.exp_name
+logs_dir = base_dir / "logs" / config.exp_name
+
+for d in [checkpoint_dir, results_dir, logs_dir]:
+    d.mkdir(parents=True, exist_ok=True)
+
+print(f"✅ Output directories created:")
+print(f"   Checkpoints: {checkpoint_dir}")
+print(f"   Results: {results_dir}")
+print(f"   Logs: {logs_dir}")
+
+# Save config
+config_path = results_dir / "config.json"
+with open(config_path, 'w') as f:
+    json.dump(config.to_dict(), f, indent=2)
+print(f"   Config saved: {config_path}")
+
+# ==============================================================================
+# STEP 3: CLEAR GPU AND LOAD MODEL
+# ==============================================================================
+print("\n⏳ STEP 3/7: Loading model with QLoRA...")
+
+# Clear GPU memory
+if torch.cuda.is_available():
+    torch.cuda.empty_cache()
+    gc.collect()
+    print(f"   GPU memory cleared")
+
+# Load model
+try:
+    model, tokenizer = load_quantized_model(config.model_size, config)
+    print(f"✅ Model loaded: Qwen2.5-{config.model_size}-Instruct")
+    
+    # Display VRAM usage
+    if torch.cuda.is_available():
+        allocated = torch.cuda.memory_allocated(0) / (1024**3)
+        reserved = torch.cuda.memory_reserved(0) / (1024**3)
+        print(f"   VRAM allocated: {allocated:.2f} GB")
+        print(f"   VRAM reserved: {reserved:.2f} GB")
+except Exception as e:
+    print(f"❌ Model loading failed: {e}")
+    raise
+
+# ==============================================================================
+# STEP 4: PREPARE DATASET
+# ==============================================================================
+print("\n⏳ STEP 4/7: Preparing training dataset...")
+
+# Get problems and answers
+train_problems = gsm8k_train['problems']
+train_answers = gsm8k_train['answers']
+
+# For smoke tier, use subset
+if USE_SMOKE_TIER:
+    train_problems = train_problems[:500]
+    train_answers = train_answers[:500]
+    print(f"   Using subset for smoke test: {len(train_problems)} problems")
+
+# Format prompts with XML template
+formatted_prompts = batch_format_prompts(train_problems, include_example=True)
+
+# Create HuggingFace Dataset
+has_clusters = 'cluster_assignments' in globals()
+if has_clusters:
+    print(f"   Using {len(cluster_assignments)} cluster assignments for CB-GRPO")
+
+train_data = [
+    {
+        "prompt": prompt,
+        "problem": problem,
+        "ground_truth": answer,
+        "cluster_id": cluster_assignments[problem] if has_clusters and problem in cluster_assignments else 0
+    }
+    for prompt, problem, answer in zip(formatted_prompts, train_problems, train_answers)
+]
+
+train_dataset = Dataset.from_list(train_data)
+print(f"✅ Dataset prepared: {len(train_dataset)} examples")
+
+# ==============================================================================
+# STEP 5: SETUP REWARD FUNCTION
+# ==============================================================================
+print("\n⏳ STEP 5/7: Configuring reward function...")
+
+def compute_reward_for_grpo(generated_text: str, ground_truth: str) -> float:
+    """
+    Reward function for GRPO training.
+    
+    Combines format reward (XML structure) and correctness reward (answer matching).
+    
+    Args:
+        generated_text: Model's generated output
+        ground_truth: Correct answer
+    
+    Returns:
+        Reward score between 0.0 and 1.0
+    """
+    return compute_total_reward(generated_text, ground_truth, format_weight=0.2)
+
+print(f"✅ Reward function configured:")
+print(f"   Format weight: 0.2")
+print(f"   Correctness weight: 0.8")
+print(f"   XML parsing: robust (ET + regex fallback)")
+
+# ==============================================================================
+# STEP 6: CONFIGURE GRPO TRAINER
+# ==============================================================================
+print("\n⏳ STEP 6/7: Initializing GRPO Trainer...")
+
+# Training arguments for TRL's GRPOConfig
+training_args = GRPOConfig(
+    # Output and logging
+    output_dir=str(checkpoint_dir),
+    logging_dir=str(logs_dir),
+    logging_steps=config.log_interval,
+    
+    # Training schedule
+    num_train_epochs=1,
+    max_steps=config.training_steps,
+    
+    # Batch configuration
+    per_device_train_batch_size=config.batch_size,
+    gradient_accumulation_steps=config.gradient_accumulation_steps,
+    
+    # Optimization
+    learning_rate=config.learning_rate,
+    lr_scheduler_type=config.lr_scheduler_type,
+    warmup_ratio=config.warmup_ratio,
+    
+    # GRPO-specific
+    beta=0.1,  # KL penalty coefficient
+    num_generation_per_prompt=config.rollouts_per_prompt,  # G rollouts
+    
+    # Generation config
+    generation_config={
+        "max_new_tokens": config.max_new_tokens,
+        "temperature": config.temperature,
+        "top_p": config.top_p,
+        "do_sample": True,
+    },
+    
+    # Checkpointing
+    save_strategy="steps",
+    save_steps=config.checkpoint_interval,
+    save_total_limit=3,  # Keep last 3 checkpoints
+    
+    # Evaluation
+    evaluation_strategy="steps" if config.eval_interval > 0 else "no",
+    eval_steps=config.eval_interval if config.eval_interval > 0 else None,
+    
+    # Memory optimization
+    gradient_checkpointing=True,
+    fp16=True if torch.cuda.is_available() else False,
+    
+    # Misc
+    remove_unused_columns=False,
+    report_to="none",  # Disable wandb/tensorboard
+    seed=config.random_seed,
+)
+
+# LoRA configuration
+peft_config = LoraConfig(
+    r=config.lora_r,
+    lora_alpha=config.lora_alpha,
+    target_modules=config.lora_target_modules,
+    lora_dropout=0.05,
+    bias="none",
+    task_type="CAUSAL_LM",
+)
+
+print(f"✅ Training configuration:")
+print(f"   Steps: {config.training_steps}")
+print(f"   Effective batch size: {config.batch_size * config.gradient_accumulation_steps}")
+print(f"   Learning rate: {config.learning_rate}")
+print(f"   Rollouts per prompt: {config.rollouts_per_prompt}")
+print(f"   Checkpoint every: {config.checkpoint_interval} steps")
+
+# Initialize trainer
+try:
+    if "cbgrpo" in EXPERIMENT_NAME.lower():
+        from cbgrpo_trainer import CBGRPOTrainer
+        print(f"✅ Initializing CB-GRPO Trainer (Novel Algorithm)")
+        trainer = CBGRPOTrainer(
+            model=model,
+            args=training_args,
+            train_dataset=train_dataset,
+            peft_config=peft_config,
+            tokenizer=tokenizer,
+            n_clusters=16,
+            alpha=0.01,
+            decay=0.9,
+            theta=1.2
+        )
+    else:
+        trainer = GRPOTrainer(
+            model=model,
+            args=training_args,
+            train_dataset=train_dataset,
+            peft_config=peft_config,
+            tokenizer=tokenizer,
+            # reward_funcs=[compute_reward_for_grpo],  # TRL will call this
+        )
+    
+    print(f"✅ Trainer initialized")
+    print(f"   Trainable parameters: {trainer.model.num_parameters(only_trainable=True):,}")
+    
+except Exception as e:
+    print(f"❌ Trainer initialization failed: {e}")
+    raise
+
+# ==============================================================================
+# STEP 7: EXECUTE TRAINING
+# ==============================================================================
+print("\n" + "=" * 80)
+print("🔥 STEP 7/7: STARTING TRAINING")
+print("=" * 80)
+print()
+print("Training will:")
+print(f"  • Run for {config.training_steps} steps")
+print(f"  • Save checkpoints every {config.checkpoint_interval} steps")
+print(f"  • Generate {config.rollouts_per_prompt} solutions per problem")
+print(f"  • Compute rewards using XML parsing + correctness")
+print(f"  • Update model using GRPO algorithm")
+print()
+print("Monitor:")
+print("  • Progress bar below")
+print("  • GPU usage (bottom right)")
+print("  • Loss and reward metrics")
+print()
+print("If interrupted:")
+print("  • Checkpoints are saved to Drive")
+print("  • Re-run this cell to resume from last checkpoint")
+print()
+print("=" * 80)
+print()
+
+# Check for existing checkpoints
+existing_checkpoints = list(checkpoint_dir.glob("checkpoint-*"))
+if existing_checkpoints:
+    latest_checkpoint = max(existing_checkpoints, key=lambda p: int(p.name.split('-')[1]))
+    print(f"⏳ Found existing checkpoint: {latest_checkpoint.name}")
+    print(f"   Resuming from step {latest_checkpoint.name.split('-')[1]}")
+    print()
+
+# START TRAINING
+try:
+    train_result = trainer.train(resume_from_checkpoint=len(existing_checkpoints) > 0)
+    
+    print("\n" + "=" * 80)
+    print("✅ TRAINING COMPLETE")
+    print("=" * 80)
+    
+    # Save final model
+    final_model_path = checkpoint_dir / "final_model"
+    trainer.save_model(str(final_model_path))
+    print(f"✅ Final model saved: {final_model_path}")
+    
+    # Save training metrics
+    metrics_path = results_dir / "training_metrics.json"
+    with open(metrics_path, 'w') as f:
+        json.dump(train_result.metrics, f, indent=2)
+    print(f"✅ Metrics saved: {metrics_path}")
+    
+except KeyboardInterrupt:
+    print("\n⚠️  Training interrupted by user")
+    print(f"   Last checkpoint saved at: {checkpoint_dir}")
+    print(f"   Re-run this cell to resume training")
+    
+except Exception as e:
+    print(f"\n❌ Training failed: {e}")
+    print(f"   Check logs at: {logs_dir}")
+    raise
+
+finally:
+    # Cleanup
+    print("\n⏳ Cleaning up...")
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        gc.collect()
+    print("✅ GPU memory cleared")
+
+# ==============================================================================
+# TRAINING SUMMARY
+# ==============================================================================
+print("\n" + "=" * 80)
+print("TRAINING SUMMARY")
+print("=" * 80)
+print(f"Experiment: {config.exp_name}")
+print(f"Model: Qwen2.5-{config.model_size}-Instruct")
+print(f"Training steps: {config.training_steps}")
+print(f"End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print()
+print("Output locations:")
+print(f"  • Checkpoints: {checkpoint_dir}")
+print(f"  • Results: {results_dir}")
+print(f"  • Logs: {logs_dir}")
+print()
+print("Next steps:")
+print("  1. Evaluate model on test set")
+print("  2. Generate Pass@k metrics")
+print("  3. Analyze learning curves")
+print("  4. Compare with baseline experiments")
+print("=" * 80)

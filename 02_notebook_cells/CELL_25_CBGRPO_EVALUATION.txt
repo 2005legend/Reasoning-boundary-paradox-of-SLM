@@ -1,0 +1,386 @@
+# ============================================================================
+# CELL 25: CB-GRPO MODEL EVALUATION
+# ============================================================================
+# This cell evaluates the CB-GRPO trained model
+#
+# Uses IDENTICAL evaluation protocol as Cell 22 (vanilla GRPO) for fair comparison
+#
+# Expected Improvements over Vanilla GRPO:
+# - Higher Pass@1 (more consistent reasoning)
+# - Smaller Pass@1 vs Pass@4 gap (less variance)
+# - Better capacity allocation across reasoning patterns
+
+import torch
+import json
+import re
+from pathlib import Path
+from typing import List, Dict
+from tqdm import tqdm
+
+print("=" * 80)
+print("📊 CB-GRPO MODEL EVALUATION")
+print("=" * 80)
+print()
+
+# ==============================================================================
+# CONFIGURATION
+# ==============================================================================
+# MUST use same parameters as Cell 22 for fair comparison
+
+MODEL_PATH = Path("/content/drive/MyDrive/RLVR_Research/checkpoints/exp2_n1_cbgrpo_0.5B/final_model")
+
+# Check if smoke test
+if "_smoke" in EXPERIMENT_NAME:
+    MODEL_PATH = Path(f"/content/drive/MyDrive/RLVR_Research/checkpoints/{EXPERIMENT_NAME}/final_model")
+
+if not MODEL_PATH.exists():
+    print(f"❌ Model not found at: {MODEL_PATH}")
+    print("\nDid you run Cell 24 (CB-GRPO training)?")
+    raise FileNotFoundError(f"Model not found: {MODEL_PATH}")
+
+NUM_TEST_SAMPLES = 20  # Same as vanilla GRPO
+NUM_GENERATIONS = 4    # Same as vanilla GRPO
+MAX_NEW_TOKENS = 512
+TEMPERATURE = 0.7
+TOP_P = 0.9
+
+print(f"Model path: {MODEL_PATH}")
+print(f"✅ Model exists")
+print(f"Test samples: {NUM_TEST_SAMPLES}")
+print(f"Generations per problem: {NUM_GENERATIONS}")
+print()
+
+# ==============================================================================
+# STEP 1: LOAD MODEL
+# ==============================================================================
+print("⏳ STEP 1/5: Loading CB-GRPO trained model...")
+
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import PeftModel
+
+# Read config directly
+adapter_config_path = MODEL_PATH / "adapter_config.json"
+with open(adapter_config_path, 'r') as f:
+    adapter_config = json.load(f)
+
+base_model_name = adapter_config['base_model_name_or_path']
+
+print(f"   Base model: {base_model_name}")
+print(f"   Loading base model...")
+
+base_model = AutoModelForCausalLM.from_pretrained(
+    base_model_name,
+    torch_dtype=torch.float16,
+    device_map="auto",
+    trust_remote_code=True
+)
+
+print(f"   Loading LoRA adapter...")
+
+model = PeftModel.from_pretrained(
+    base_model,
+    str(MODEL_PATH),
+    is_trainable=False
+)
+
+tokenizer = AutoTokenizer.from_pretrained(base_model_name, trust_remote_code=True)
+
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
+
+model.eval()
+
+print(f"✅ Model loaded: {next(model.parameters()).device}")
+
+# ==============================================================================
+# STEP 2: LOAD TEST DATASET (SAME AS CELL 22)
+# ==============================================================================
+print("\n⏳ STEP 2/5: Loading test dataset...")
+
+from datasets import load_dataset
+
+gsm8k_test = load_dataset("openai/gsm8k", "main", split="test")
+
+test_problems = [item['question'] for item in gsm8k_test]
+test_answers = [item['answer'] for item in gsm8k_test]
+
+def extract_answer(answer_text):
+    match = re.search(r'####\s*(-?\d+(?:[,\.\d]*)?)', answer_text)
+    return match.group(1).replace(',', '') if match else ""
+
+test_ground_truths = [extract_answer(ans) for ans in test_answers]
+
+# Use SAME test samples as vanilla GRPO for fair comparison
+test_problems = test_problems[:NUM_TEST_SAMPLES]
+test_ground_truths = test_ground_truths[:NUM_TEST_SAMPLES]
+
+print(f"✅ Loaded {len(test_problems)} test problems (same as vanilla GRPO)")
+
+# ==============================================================================
+# STEP 3: EVALUATION FUNCTIONS (SAME AS CELL 22)
+# ==============================================================================
+print("\n⏳ STEP 3/5: Setting up evaluation...")
+
+def format_prompt(problem):
+    return f"""Solve this math problem step by step.
+
+Problem: {problem}
+
+Provide your answer in this format:
+<reasoning>
+[Your reasoning]
+</reasoning>
+<answer>
+[Final number]
+</answer>
+
+Solution:"""
+
+def generate_solutions(model, tokenizer, prompt, num=4):
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512).to(model.device)
+    
+    solutions = []
+    for _ in range(num):
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=MAX_NEW_TOKENS,
+                temperature=TEMPERATURE,
+                top_p=TOP_P,
+                do_sample=True,
+                pad_token_id=tokenizer.pad_token_id
+            )
+        
+        solution = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        if "Solution:" in solution:
+            solution = solution.split("Solution:")[-1].strip()
+        solutions.append(solution)
+    
+    return solutions
+
+def extract_predicted_answer(text):
+    match = re.search(r'<answer>\s*(-?\d+(?:[,\.\d]*)?)\s*</answer>', text, re.IGNORECASE)
+    if match:
+        return match.group(1).replace(',', '')
+    
+    numbers = re.findall(r'-?\d+(?:[,\.\d]*)?', text)
+    return numbers[-1].replace(',', '') if numbers else ""
+
+def check_correctness(predicted, ground_truth):
+    predicted = predicted.strip().replace(',', '')
+    ground_truth = ground_truth.strip().replace(',', '')
+    
+    if predicted == ground_truth:
+        return True
+    
+    try:
+        return abs(float(predicted) - float(ground_truth)) < 0.01
+    except:
+        return False
+
+print("✅ Ready")
+
+# ==============================================================================
+# STEP 4: RUN EVALUATION
+# ==============================================================================
+print("\n⏳ STEP 4/5: Evaluating (this will take ~5-10 minutes)...")
+print()
+
+results = []
+pass_at_1 = []
+pass_at_4 = []
+
+for idx, (problem, ground_truth) in enumerate(tqdm(zip(test_problems, test_ground_truths),
+                                                      total=len(test_problems),
+                                                      desc="Evaluating")):
+    
+    prompt = format_prompt(problem)
+    solutions = generate_solutions(model, tokenizer, prompt, NUM_GENERATIONS)
+    
+    predicted_answers = [extract_predicted_answer(sol) for sol in solutions]
+    correct = [check_correctness(pred, ground_truth) for pred in predicted_answers]
+    
+    pass_at_1.append(1 if correct[0] else 0)
+    pass_at_4.append(1 if any(correct) else 0)
+    
+    results.append({
+        "problem_idx": idx,
+        "problem": problem,
+        "ground_truth": ground_truth,
+        "predictions": predicted_answers,
+        "correct": correct
+    })
+    
+    if (idx + 1) % 5 == 0:
+        current_p1 = sum(pass_at_1) / len(pass_at_1) * 100
+        current_p4 = sum(pass_at_4) / len(pass_at_4) * 100
+        print(f"   [{idx+1}/{NUM_TEST_SAMPLES}] Pass@1={current_p1:.1f}%, Pass@4={current_p4:.1f}%")
+
+print("\n✅ Evaluation complete")
+
+# ==============================================================================
+# STEP 5: SAVE AND DISPLAY RESULTS
+# ==============================================================================
+print("\n⏳ STEP 5/5: Saving results...")
+
+pass_at_1_acc = sum(pass_at_1) / len(pass_at_1) * 100
+pass_at_4_acc = sum(pass_at_4) / len(pass_at_4) * 100
+
+results_dir = Path("/content/drive/MyDrive/RLVR_Research/results/exp2_n1_cbgrpo_0.5B")
+if "_smoke" in EXPERIMENT_NAME:
+    results_dir = Path(f"/content/drive/MyDrive/RLVR_Research/results/{EXPERIMENT_NAME}")
+
+results_dir.mkdir(parents=True, exist_ok=True)
+
+with open(results_dir / "evaluation_metrics.json", 'w') as f:
+    json.dump({
+        "model": str(MODEL_PATH),
+        "pass_at_1": pass_at_1_acc,
+        "pass_at_4": pass_at_4_acc,
+        "num_samples": NUM_TEST_SAMPLES,
+        "num_generations": NUM_GENERATIONS,
+        "temperature": TEMPERATURE
+    }, f, indent=2)
+
+with open(results_dir / "evaluation_details.json", 'w') as f:
+    json.dump(results, f, indent=2)
+
+print(f"✅ Saved to: {results_dir}")
+
+# ==============================================================================
+# DISPLAY RESULTS
+# ==============================================================================
+print("\n" + "=" * 80)
+print("📊 CB-GRPO EVALUATION RESULTS")
+print("=" * 80)
+print()
+
+print(f"Model: {EXPERIMENT_NAME}")
+print(f"Test samples: {NUM_TEST_SAMPLES}")
+print(f"Generations per problem: {NUM_GENERATIONS}")
+print()
+
+print(f"🎯 Pass@1 Accuracy: {pass_at_1_acc:.2f}%")
+print(f"   ({sum(pass_at_1)}/{len(pass_at_1)} problems solved on first try)")
+print()
+
+print(f"🎯 Pass@4 Accuracy: {pass_at_4_acc:.2f}%")
+print(f"   ({sum(pass_at_4)}/{len(pass_at_4)} problems solved in best of 4)")
+print()
+
+print(f"📈 Gap (Pass@4 - Pass@1): {pass_at_4_acc - pass_at_1_acc:.2f}%")
+print(f"   (Smaller gap = more consistent reasoning)")
+print()
+
+print("=" * 80)
+
+# ==============================================================================
+# COMPARISON WITH VANILLA GRPO
+# ==============================================================================
+print("\n" + "=" * 80)
+print("📊 COMPARISON: CB-GRPO vs Vanilla GRPO")
+print("=" * 80)
+print()
+
+# Load vanilla GRPO results
+vanilla_results_path = Path("/content/drive/MyDrive/RLVR_Research/results/exp2_n1_vanilla_0.5B/evaluation_metrics.json")
+
+if vanilla_results_path.exists():
+    with open(vanilla_results_path, 'r') as f:
+        vanilla_metrics = json.load(f)
+    
+    vanilla_p1 = vanilla_metrics['pass_at_1']
+    vanilla_p4 = vanilla_metrics['pass_at_4']
+    
+    print("Vanilla GRPO (Baseline):")
+    print(f"  Pass@1: {vanilla_p1:.2f}%")
+    print(f"  Pass@4: {vanilla_p4:.2f}%")
+    print(f"  Gap:    {vanilla_p4 - vanilla_p1:.2f}%")
+    print()
+    
+    print("CB-GRPO (Novel):")
+    print(f"  Pass@1: {pass_at_1_acc:.2f}%")
+    print(f"  Pass@4: {pass_at_4_acc:.2f}%")
+    print(f"  Gap:    {pass_at_4_acc - pass_at_1_acc:.2f}%")
+    print()
+    
+    print("Improvement:")
+    p1_change = pass_at_1_acc - vanilla_p1
+    p4_change = pass_at_4_acc - vanilla_p4
+    gap_change = (pass_at_4_acc - pass_at_1_acc) - (vanilla_p4 - vanilla_p1)
+    
+    print(f"  Pass@1: {'+' if p1_change > 0 else ''}{p1_change:.2f}%")
+    print(f"  Pass@4: {'+' if p4_change > 0 else ''}{p4_change:.2f}%")
+    print(f"  Gap:    {'+' if gap_change > 0 else ''}{gap_change:.2f}% (negative = better)")
+    print()
+    
+    # Categorize problems
+    easy_correct = []   # Pass@1 AND Pass@4
+    hard_correct = []   # Pass@4 only
+    incorrect = []      # Neither
+    
+    for r in results:
+        if r['correct'][0]:
+            easy_correct.append(r)
+        elif any(r['correct']):
+            hard_correct.append(r)
+        else:
+            incorrect.append(r)
+    
+    print("Problem Distribution:")
+    print(f"  Easy (Pass@1):    {len(easy_correct)}/20")
+    print(f"  Hard (Pass@4):    {len(hard_correct)}/20")
+    print(f"  Incorrect:        {len(incorrect)}/20")
+    print()
+    
+    # Load balance report if available
+    balance_report_path = results_dir.parent / EXPERIMENT_NAME / "cbgrpo_balance_report.json"
+    if balance_report_path.exists():
+        with open(balance_report_path, 'r') as f:
+            balance_report = json.load(f)
+        
+        print("CB-GRPO Balance Metrics:")
+        print(f"  Final Gini coefficient: {balance_report['summary']['final_gini']:.4f}")
+        print(f"  Balance improved: {balance_report['summary']['balance_improved']}")
+        print()
+
+else:
+    print("⚠️  Vanilla GRPO results not found at:")
+    print(f"   {vanilla_results_path}")
+    print("   Run Cell 22 first to create baseline results")
+
+print("=" * 80)
+
+# ==============================================================================
+# SAMPLE OUTPUTS
+# ==============================================================================
+print("\n" + "=" * 80)
+print("📝 SAMPLE OUTPUTS")
+print("=" * 80)
+
+for idx in range(min(3, len(results))):
+    r = results[idx]
+    
+    print(f"\n{'─' * 80}")
+    print(f"Problem {idx+1}:")
+    print(f"{'─' * 80}")
+    print(f"Question: {r['problem'][:100]}...")
+    print(f"Ground Truth: {r['ground_truth']}")
+    print(f"Predictions: {r['predictions']}")
+    print(f"Correct: {r['correct']}")
+    
+    status_1 = "✅ CORRECT" if r['correct'][0] else "❌ WRONG"
+    status_4 = "✅ CORRECT" if any(r['correct']) else "❌ WRONG"
+    print(f"Pass@1: {status_1} | Pass@4: {status_4}")
+
+print("\n" + "=" * 80)
+print("✅ CB-GRPO EVALUATION COMPLETE!")
+print("=" * 80)
+print(f"\n📁 Full results saved to Google Drive:")
+print(f"   {results_dir}")
+print()
+print("Next steps:")
+print("  • Analyze balance history to understand capacity allocation")
+print("  • Compare with vanilla GRPO across multiple runs")
+print("  • Run statistical significance tests")
+print("=" * 80)

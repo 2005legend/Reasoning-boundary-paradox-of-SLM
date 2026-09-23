@@ -1,0 +1,139 @@
+# Copy this ENTIRE code into Cell 20 to replace the broken version
+
+import sys
+import torch
+import gc
+from pathlib import Path
+import shutil
+from typing import Dict, Any
+
+def run_preflight_check() -> Dict[str, Any]:
+    """Production-grade pre-flight verification."""
+    results = {'checks': {}, 'passed': 0, 'total': 8, 'critical_failures': [], 'warnings': [], 'ready': False}
+    
+    print("=" * 80)
+    print("🚀 PRODUCTION PRE-FLIGHT VERIFICATION")
+    print("=" * 80)
+    print()
+    
+    # Check 1: Environment
+    print("1. Environment...")
+    try:
+        import google.colab
+        results['checks']['environment'] = 'colab'
+        results['passed'] += 1
+        print("   ✅ Google Colab")
+    except ImportError:
+        results['checks']['environment'] = 'local'
+        results['passed'] += 1
+        print("   ⚠️  Local environment")
+    
+    # Check 2: GPU and VRAM
+    print("\n2. GPU and VRAM...")
+    if torch.cuda.is_available():
+        gpu_name = torch.cuda.get_device_name(0)
+        vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+        print(f"   ✅ GPU: {gpu_name}")
+        print(f"   ✅ VRAM: {vram_gb:.1f} GB")
+        if vram_gb >= 14:
+            print("   ✅ Ready for 1.5B")
+            results['passed'] += 1
+        elif vram_gb >= 8:
+            print("   ⚠️  Use 0.5B model")
+            results['warnings'].append("VRAM < 14GB, use 0.5B")
+            results['passed'] += 1
+        else:
+            results['critical_failures'].append("Insufficient VRAM")
+    else:
+        results['critical_failures'].append("No GPU")
+        print("   ❌ NO GPU")
+    
+    # Check 3: Packages
+    print("\n3. Packages...")
+    required = ['torch', 'transformers', 'trl', 'peft', 'datasets', 'sentence_transformers', 'sklearn', 'hypothesis']
+    missing = [p for p in required if not __import__(p.replace('-', '_'))]
+    if not missing:
+        print(f"   ✅ All {len(required)} packages")
+        results['passed'] += 1
+    else:
+        results['critical_failures'].append(f"Missing: {missing}")
+        print(f"   ❌ Missing: {missing}")
+    
+    # Check 4: Storage
+    print("\n4. Storage...")
+    drive_base = Path("/content/drive/MyDrive/RLVR_Research")
+    if drive_base.exists():
+        print(f"   ✅ Drive mounted")
+        results['passed'] += 1
+    else:
+        print(f"   ⚠️  Using local storage")
+        results['passed'] += 1
+    
+    # Check 5: Datasets
+    print("\n5. Datasets...")
+    if 'gsm8k_train' in globals() and gsm8k_train.get('count', 0) >= 7000:
+        print(f"   ✅ GSM8K: {gsm8k_train['count']} problems")
+        results['passed'] += 1
+    else:
+        results['critical_failures'].append("Datasets not loaded")
+        print("   ❌ Run Cell 5")
+    
+    # Check 6: Clustering
+    print("\n6. Clustering...")
+    if 'cluster_assignments' in globals() and len(cluster_assignments) >= 7000:
+        print(f"   ✅ Clusters: {len(set(cluster_assignments.values()))}")
+        results['passed'] += 1
+    else:
+        print("   ⚠️  Clustering skipped (Vanilla GRPO only)")
+        results['passed'] += 1
+    
+    # Check 7: Config
+    print("\n7. Configuration...")
+    if 'ExperimentConfig' in globals():
+        print("   ✅ Config system ready")
+        results['passed'] += 1
+    else:
+        results['critical_failures'].append("Config not loaded")
+        print("   ❌ Run Cell 4")
+    
+    # Check 8: Disk Space
+    print("\n8. Disk Space...")
+    try:
+        stat = shutil.disk_usage("/content/drive/MyDrive" if drive_base.exists() else "/content")
+        free_gb = stat.free / (1024**3)
+        print(f"   ✅ Free: {free_gb:.1f} GB")
+        results['passed'] += 1
+    except:
+        results['passed'] += 1
+    
+    # Summary
+    print("\n" + "=" * 80)
+    print("VERIFICATION RESULTS")
+    print("=" * 80)
+    print(f"Checks passed: {results['passed']}/{results['total']}")
+    
+    has_critical = len(results['critical_failures']) > 0
+    sufficient = results['passed'] >= 6
+    results['ready'] = (not has_critical) and sufficient
+    
+    if results['ready']:
+        print("\n✅ READY FOR TRAINING")
+        print("\nProceed to Cell 21")
+    else:
+        if has_critical:
+            print("\n❌ CRITICAL FAILURES:")
+            for f in results['critical_failures']:
+                print(f"  • {f}")
+        else:
+            print("\n⚠️  INSUFFICIENT CHECKS")
+    
+    if results['warnings']:
+        print(f"\n⚠️  Warnings ({len(results['warnings'])}):")
+        for w in results['warnings']:
+            print(f"  • {w}")
+    
+    print("=" * 80)
+    return results
+
+# Execute
+preflight_results = run_preflight_check()

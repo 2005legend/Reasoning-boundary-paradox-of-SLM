@@ -1,0 +1,380 @@
+# ============================================================================
+# CB-GRPO ALL-IN-ONE: CONFIG + TRAINING (v4 — zero-init + warm-up gate)
+# ============================================================================
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+import subprocess, sys
+print("=" * 80); print("🚀 CB-GRPO ALL-IN-ONE TRAINING (v4)"); print("=" * 80); print()
+
+print("⏳ Installing required packages...")
+for pkg in ["bitsandbytes>=0.46.1", "accelerate", "sentence-transformers",
+            "scikit-learn", "trl", "peft", "datasets"]:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", pkg], check=True)
+print("✅ Packages installed\n")
+
+import torch, gc, json, pickle, re
+from datetime import datetime
+from pathlib import Path
+import numpy as np
+from collections import Counter, deque
+
+print(f"Start time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print("=" * 80); print()
+
+# ==============================================================================
+# EXPERIMENT CONFIGURATION
+# ==============================================================================
+EXPERIMENT_NAME = "exp2_n1_cbgrpo_0.5B"
+USE_SMOKE_TIER = False    # smoke test passed — now running full 800 steps
+
+N_CLUSTERS = 16
+EMA_ALPHA = 0.01
+DECAY_FACTOR = 0.9
+THETA_THRESHOLD = 1.2
+MIN_VISITS_BEFORE_GATING = 10     # <-- NEW: don't gate a cluster until it has this many samples
+NUM_GENERATIONS = 4
+SAMPLER_REFRESH_EVERY = 2         # in GROUPS, not raw samples
+
+TRAINING_STEPS = 100 if USE_SMOKE_TIER else 800
+BATCH_SIZE = 4                    # must be a multiple of NUM_GENERATIONS
+GRAD_ACCUM = 2                    # 4*2=8, same effective batch as before
+LEARNING_RATE = 5e-6
+CHECKPOINT_INTERVAL = 50
+
+print(f"Experiment: {EXPERIMENT_NAME}")
+print(f"Training steps: {TRAINING_STEPS}")
+print(f"CB-GRPO enabled: n_clusters={N_CLUSTERS}, ema_alpha={EMA_ALPHA}, "
+      f"theta={THETA_THRESHOLD}, decay={DECAY_FACTOR}, min_visits={MIN_VISITS_BEFORE_GATING}")
+print()
+
+# ==============================================================================
+# STEP 1: CLUSTER ASSIGNMENTS
+# ==============================================================================
+print("⏳ STEP 1/9: Creating/loading cluster assignments...")
+cluster_file = Path("/kaggle/working/cluster_assignments.pkl")
+
+if cluster_file.exists():
+    with open(cluster_file, 'rb') as f:
+        cluster_data = pickle.load(f)
+    cluster_assignments = cluster_data['assignments']
+    print(f"✅ Loaded {len(cluster_assignments)} cluster assignments")
+else:
+    from sentence_transformers import SentenceTransformer
+    from sklearn.cluster import KMeans
+    from datasets import load_dataset
+
+    gsm8k_temp = load_dataset('openai/gsm8k', 'main', split='train')
+    problems_temp = [item['question'] for item in gsm8k_temp]
+    embed_model = SentenceTransformer("all-MiniLM-L6-v2")
+    embeddings = embed_model.encode(problems_temp, show_progress_bar=True,
+                                     batch_size=32, convert_to_numpy=True)
+    kmeans = KMeans(n_clusters=N_CLUSTERS, random_state=42, n_init=10, max_iter=300)
+    cluster_labels = kmeans.fit_predict(embeddings)
+    cluster_assignments = {p: int(c) for p, c in zip(problems_temp, cluster_labels)}
+
+    cluster_data = {'assignments': cluster_assignments, 'n_clusters': N_CLUSTERS,
+                     'embedding_model': "all-MiniLM-L6-v2",
+                     'cluster_centers': kmeans.cluster_centers_,
+                     'inertia': kmeans.inertia_, 'n_iter': kmeans.n_iter_}
+    cluster_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(cluster_file, 'wb') as f:
+        pickle.dump(cluster_data, f)
+
+    cluster_counts = Counter(cluster_assignments.values())
+    sizes = [cluster_counts.get(i, 0) for i in range(N_CLUSTERS)]
+    print(f"✅ Created {len(cluster_assignments)} assignments "
+          f"(mean={np.mean(sizes):.1f}, min={min(sizes)}, max={max(sizes)})")
+    del gsm8k_temp, problems_temp, embed_model, embeddings, kmeans
+    gc.collect()
+print()
+
+# ==============================================================================
+# STEP 2: DIRECTORIES
+# ==============================================================================
+print("⏳ STEP 2/9: Setting up directories...")
+base_dir = Path("/kaggle/working")
+checkpoint_dir = base_dir / "checkpoints" / EXPERIMENT_NAME
+results_dir = base_dir / "results" / EXPERIMENT_NAME
+logs_dir = base_dir / "logs" / EXPERIMENT_NAME
+for d in [checkpoint_dir, results_dir, logs_dir]:
+    d.mkdir(parents=True, exist_ok=True)
+print("✅ Directories created\n")
+
+# ==============================================================================
+# STEP 3: MODEL WITH QLORA
+# ==============================================================================
+print("⏳ STEP 3/9: Loading model with QLoRA...")
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+
+MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
+bnb_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
+                                 bnb_4bit_compute_dtype=torch.float16,
+                                 bnb_4bit_use_double_quant=True)
+model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, quantization_config=bnb_config,
+                                              device_map={"": 0}, trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
+
+model = prepare_model_for_kbit_training(model)
+lora_config = LoraConfig(r=16, lora_alpha=32,
+                          target_modules=["q_proj", "v_proj", "k_proj", "o_proj"],
+                          lora_dropout=0.05, bias="none", task_type="CAUSAL_LM")
+model = get_peft_model(model, lora_config)
+print(f"✅ Model loaded. Trainable params: {model.num_parameters(only_trainable=True):,}\n")
+
+# ==============================================================================
+# STEP 4: DATASET
+# ==============================================================================
+print("⏳ STEP 4/9: Loading GSM8K dataset...")
+from datasets import load_dataset, Dataset
+
+gsm8k_train_dataset = load_dataset('openai/gsm8k', 'main', split='train')
+
+def parse_answer(answer_text):
+    return answer_text.split('####')[-1].strip().replace(',', '') if '####' in answer_text else ""
+
+problems = [item['question'] for item in gsm8k_train_dataset]
+answers = [parse_answer(item['answer']) for item in gsm8k_train_dataset]
+if USE_SMOKE_TIER:
+    problems, answers = problems[:500], answers[:500]
+print(f"✅ GSM8K loaded: {len(problems)} problems\n")
+
+print("⏳ STEP 5/9: Preparing dataset with cluster IDs...")
+train_data = []
+for problem, answer in zip(problems, answers):
+    cid = cluster_assignments.get(problem, 0)
+    prompt = f"""Solve this math problem step by step.
+
+Problem: {problem}
+
+Provide your answer in this format:
+<reasoning>
+[Your reasoning]
+</reasoning>
+<answer>
+[Final number]
+</answer>
+
+Solution:"""
+    train_data.append({"prompt": prompt, "problem": problem,
+                        "ground_truth": answer, "cluster_id": cid})
+train_dataset = Dataset.from_list(train_data)
+print(f"✅ Dataset prepared: {len(train_dataset)} examples\n")
+
+# ==============================================================================
+# STEP 6: REWARD FUNCTION
+# ==============================================================================
+print("⏳ STEP 6/9: Defining reward function...")
+
+def compute_reward_for_grpo(prompts, completions, ground_truth=None, problem=None, **kwargs):
+    rewards = []
+    for i, completion in enumerate(completions):
+        reward = 0.0
+        if '<reasoning>' in completion and '</reasoning>' in completion:
+            reward += 0.1
+        if '<answer>' in completion and '</answer>' in completion:
+            reward += 0.1
+        if ground_truth is not None:
+            m = re.search(r'<answer>\s*(-?\d+(?:[,\.\d]*)?)\s*</answer>', completion, re.IGNORECASE)
+            if m:
+                extracted = m.group(1).replace(',', '')
+                try:
+                    if abs(float(extracted) - float(str(ground_truth[i]).replace(',', ''))) < 1e-4:
+                        reward += 0.8
+                except ValueError:
+                    pass
+        # Outlier detection for debugging recurring anomalous loss values
+        if reward > 0.9 or reward < 0:
+            print(f"[REWARD OUTLIER] reward={reward:.4f} completion={completion[:150]!r}")
+        rewards.append(reward)
+    return rewards
+print("✅ Reward function defined\n")
+
+# ==============================================================================
+# STEP 7: CB-GRPO — zero-init spend, min-visits warm-up gate, live lazy sampler
+# ==============================================================================
+print("⏳ STEP 7/9: Setting up CB-GRPO spend tracker and lazy sampler...")
+
+shared_spend_ema = np.zeros(N_CLUSTERS)          # <-- FIX 1: was np.ones(...)
+shared_visit_counts = np.zeros(N_CLUSTERS, dtype=int)   # <-- FIX 2: warm-up tracking
+sampled_cluster_log = deque(maxlen=200)
+
+class CBGRPOSpendTracker:
+    """Updates spend_ema and visit_counts live from rewards. Does NOT scale
+    rewards themselves — GRPO's group-relative normalization would cancel out
+    a uniform per-group scale, so throttling happens via sampling frequency."""
+    def __init__(self, base_reward_fn, cluster_map, spend_ema, visit_counts, ema_alpha=0.01):
+        self.base_reward_fn = base_reward_fn
+        self.cluster_map = cluster_map
+        self.spend_ema = spend_ema
+        self.visit_counts = visit_counts
+        self.ema_alpha = ema_alpha
+        self.step = 0
+
+    def __call__(self, prompts, completions, problem=None, ground_truth=None, **kwargs):
+        rewards = self.base_reward_fn(prompts, completions, ground_truth=ground_truth, **kwargs)
+        problems = problem if problem is not None else prompts
+        for r, p in zip(rewards, problems):
+            cid = self.cluster_map.get(p, 0)
+            self.spend_ema[cid] = self.ema_alpha * abs(r) + (1 - self.ema_alpha) * self.spend_ema[cid]
+            self.visit_counts[cid] += 1
+        self.step += 1
+        if self.step % 20 == 0:
+            print(f"[CB-GRPO] step={self.step} spend_ema min/max="
+                  f"{self.spend_ema.min():.3f}/{self.spend_ema.max():.3f} "
+                  f"visits min/max={self.visit_counts.min()}/{self.visit_counts.max()} "
+                  f"argmax_cluster={int(self.spend_ema.argmax())}")
+        return rewards
+
+class CBGRPOSampler(torch.utils.data.Sampler):
+    """Lazy generator: recomputes sampling probs from LIVE spend_ema every
+    `refresh_every` GROUPS. Repeats each chosen prompt `num_generations` times
+    consecutively (required by GRPOTrainer's grouping). Clusters below
+    `min_visits` are never gated — avoids acting on noisy early EMA estimates,
+    and avoids punishing clusters just for having zero visits so far."""
+    def __init__(self, cluster_ids, spend_ema, visit_counts, num_generations,
+                 theta=1.2, decay=0.9, min_visits=10, refresh_every=2,
+                 seed=42, log_deque=None):
+        self.cluster_ids = np.array(cluster_ids)
+        self.spend_ema = spend_ema
+        self.visit_counts = visit_counts
+        self.num_generations = num_generations
+        self.theta, self.decay = theta, decay
+        self.min_visits = min_visits
+        self.refresh_every = refresh_every
+        self.rng = np.random.default_rng(seed)
+        self.n = len(cluster_ids)
+        self.log_deque = log_deque
+
+    def _recompute_probs(self):
+        mean_spend = self.spend_ema.mean() + 1e-8
+        ratios = self.spend_ema[self.cluster_ids] / mean_spend
+        eligible = self.visit_counts[self.cluster_ids] >= self.min_visits
+        w = np.where(eligible & (ratios > self.theta),
+                     self.decay ** (ratios - self.theta),
+                     1.0)
+        return w / w.sum()
+
+    def __iter__(self):
+        probs = self._recompute_probs()
+        num_groups = self.n // self.num_generations
+        for g in range(num_groups):
+            if g > 0 and g % self.refresh_every == 0:
+                probs = self._recompute_probs()
+            base_idx = int(self.rng.choice(self.n, p=probs))
+            if self.log_deque is not None:
+                self.log_deque.append(int(self.cluster_ids[base_idx]))
+            for _ in range(self.num_generations):
+                yield base_idx
+
+    def __len__(self):
+        return (self.n // self.num_generations) * self.num_generations
+
+cb_reward = CBGRPOSpendTracker(compute_reward_for_grpo, cluster_assignments,
+                                shared_spend_ema, shared_visit_counts, ema_alpha=EMA_ALPHA)
+cluster_ids_list = [cluster_assignments.get(p, 0) for p in train_dataset["problem"]]
+print("✅ CB-GRPO tracker + lazy sampler ready\n")
+
+# ==============================================================================
+# STEP 8: TRAINER
+# ==============================================================================
+print("⏳ STEP 8/9: Initializing trainer...")
+from trl import GRPOTrainer, GRPOConfig
+from transformers import GenerationConfig
+
+generation_config = GenerationConfig(
+    max_new_tokens=512, temperature=0.7, top_p=0.95, top_k=50, do_sample=True,
+    pad_token_id=tokenizer.pad_token_id, eos_token_id=tokenizer.eos_token_id,
+)
+
+class CBGRPOTrainer(GRPOTrainer):
+    def __init__(self, cluster_ids_list, spend_ema, visit_counts, theta, decay,
+                 min_visits, refresh_every, num_generations, sampled_log, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cluster_ids_list = cluster_ids_list
+        self.spend_ema = spend_ema
+        self.visit_counts = visit_counts
+        self.theta, self.decay, self.min_visits = theta, decay, min_visits
+        self.refresh_every = refresh_every
+        self.num_generations = num_generations
+        self.sampled_log = sampled_log
+
+    def get_train_dataloader(self):
+        sampler = CBGRPOSampler(self.cluster_ids_list, self.spend_ema, self.visit_counts,
+                                 num_generations=self.num_generations,
+                                 theta=self.theta, decay=self.decay,
+                                 min_visits=self.min_visits,
+                                 refresh_every=self.refresh_every,
+                                 log_deque=self.sampled_log)
+        return torch.utils.data.DataLoader(
+            self.train_dataset, batch_size=self._train_batch_size,
+            sampler=sampler, collate_fn=self.data_collator,
+            num_workers=0, pin_memory=self.args.dataloader_pin_memory,
+        )
+
+training_args = GRPOConfig(
+    output_dir=str(checkpoint_dir), num_train_epochs=1, max_steps=TRAINING_STEPS,
+    per_device_train_batch_size=BATCH_SIZE, gradient_accumulation_steps=GRAD_ACCUM,
+    learning_rate=LEARNING_RATE, lr_scheduler_type="cosine", warmup_steps=10,
+    beta=0.1, num_generations=NUM_GENERATIONS, save_strategy="steps",
+    save_steps=CHECKPOINT_INTERVAL, save_total_limit=3, gradient_checkpointing=False,
+    bf16=False, fp16=False, logging_steps=10, remove_unused_columns=False,
+    report_to="none", seed=42, dataloader_num_workers=0,
+    max_grad_norm=1.0,          # cheap insurance against the loss-spike behavior seen last run
+)
+
+trainer = CBGRPOTrainer(
+    cluster_ids_list=cluster_ids_list, spend_ema=shared_spend_ema,
+    visit_counts=shared_visit_counts, theta=THETA_THRESHOLD, decay=DECAY_FACTOR,
+    min_visits=MIN_VISITS_BEFORE_GATING, refresh_every=SAMPLER_REFRESH_EVERY,
+    num_generations=NUM_GENERATIONS, sampled_log=sampled_cluster_log,
+    model=model, args=training_args, train_dataset=train_dataset,
+    processing_class=tokenizer, reward_funcs=[cb_reward],
+)
+trainer.generation_config = generation_config
+print("✅ Trainer initialized (CB-GRPO v4, zero-init + warm-up gate)\n")
+
+# ==============================================================================
+# STEP 9: TRAIN
+# ==============================================================================
+print("=" * 80); print("🔥 STEP 9/9: STARTING CB-GRPO TRAINING"); print("=" * 80)
+print(f"Training for {TRAINING_STEPS} steps...\n")
+
+try:
+    train_result = trainer.train()
+    print("\n✅ TRAINING COMPLETE!")
+
+    final_model_path = checkpoint_dir / "final_model"
+    trainer.save_model(str(final_model_path))
+    print(f"✅ Model saved: {final_model_path}")
+
+    metrics_path = results_dir / "training_metrics.json"
+    with open(metrics_path, 'w') as f:
+        json.dump(train_result.metrics, f, indent=2)
+    print(f"✅ Metrics saved: {metrics_path}")
+
+    recent = list(sampled_cluster_log)
+    recent_counts = Counter(recent)
+    print("\n📊 Verification — last 200 sampled cluster IDs vs final spend_ema:")
+    for c in range(N_CLUSTERS):
+        gated = "GATED" if shared_visit_counts[c] >= MIN_VISITS_BEFORE_GATING else "warm-up"
+        print(f"  cluster {c:2d}: spend_ema={shared_spend_ema[c]:.3f}  "
+              f"visits={shared_visit_counts[c]:4d} [{gated}]  "
+              f"sampled {recent_counts.get(c, 0)}/200 times")
+    print("With a short 100-step smoke run, most clusters should still be in "
+          "warm-up and sampling should look close to UNIFORM — that's expected, "
+          "not a bug. Real differentiation should emerge over an 800-step run.")
+
+    print(f"\nEnd time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Output: {checkpoint_dir}")
+
+except Exception as e:
+    print(f"\n❌ Training failed: {e}")
+    import traceback
+    traceback.print_exc()
+    raise
+finally:
+    print("\n🔄 Training session ended")
