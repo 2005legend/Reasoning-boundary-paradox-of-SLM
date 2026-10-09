@@ -1,0 +1,102 @@
+{
+  "model_size": "0.5B",
+  "compute_tier": "standard",
+  "seed": 1,
+  "tag": "",
+  "steps_override": 120,
+  "train_dataset": "math",
+  "math_levels": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "gate": {
+    "gate_type": "heg_grpo",
+    "cb_theta": 1.1,
+    "cb_decay": 0.18,
+    "cb_ema_alpha": 0.05,
+    "cb_use_positive_mass_only": true,
+    "cb_mean_preserving": true,
+    "cb_clip_min": 0.3,
+    "cb_clip_max": 3.0,
+    "self_lambda": 0.0,
+    "meg_alpha": 0.8,
+    "meg_clip_min": 0.3,
+    "meg_clip_max": 3.0,
+    "meg_partition": "bigram",
+    "meg_random_partition": false,
+    "meg_tau_mode": 0.85,
+    "meg_bigram_threshold": 0.4,
+    "meg_embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "bbg_k_ref": 16,
+    "bbg_tau": 0.01,
+    "combine_op": "multiplicative"
+  },
+  "reward": {
+    "reward_mode": "positive_only",
+    "format_weight": 0.0,
+    "correctness_weight": 1.0
+  },
+  "generation": {
+    "rollouts_per_prompt": 8,
+    "temperature": 0.7,
+    "top_p": 0.95,
+    "top_k": 0,
+    "repetition_penalty": 1.0,
+    "max_new_tokens": 1024,
+    "merged_generation": true,
+    "monitor_eval_problems": 50,
+    "monitor_eval_samples": 10,
+    "monitor_eval_microbatch_prompts": 8
+  },
+  "optim": {
+    "learning_rate": 1e-05,
+    "lr_scheduler_type": "cosine",
+    "warmup_ratio": 0.1,
+    "max_grad_norm": 1.0,
+    "clip_eps": 0.2,
+    "kl_beta": 0.0,
+    "lora_r": 16,
+    "lora_alpha": 32,
+    "lora_dropout": 0.0,
+    "prompts_per_micro_step": 16,
+    "grad_accum_steps": 1,
+    "gradient_checkpointing": false,
+    "score_chunk_size": 2
+  },
+  "cluster": {
+    "basis": "subject",
+    "n_clusters": 16,
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "random_state": 0
+  },
+  "eval": {
+    "n_samples": 32,
+    "k_values": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32
+    ],
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "microbatch_prompts": 8,
+    "sample_seed": 1234,
+    "subset_seed": 0,
+    "n_problems": {
+      "gsm8k": 500,
+      "gsm8k_platinum": 500,
+      "math500": 500
+    },
+    "max_new_tokens": {
+      "gsm8k": 512,
+      "gsm8k_platinum": 512,
+      "math500": 1024
+    }
+  },
+  "artifact_root": "/home/ubuntu/artifacts"
+}

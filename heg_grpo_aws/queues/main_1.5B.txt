@@ -1,0 +1,8 @@
+# OPTIONAL, not prioritized (decision 2026-10-03): 1.5B replication for the capacity question (N3).
+# Roughly 2-3x the per-step cost of 0.5B; run calibrate + a 1.5B pilot first.
+calibrate 1.5B
+base 1.5B
+train vanilla 0 1.5B --score_chunk_size 2
+train heg_grpo 0 1.5B --score_chunk_size 2
+train vanilla 1 1.5B --score_chunk_size 2
+train heg_grpo 1 1.5B --score_chunk_size 2

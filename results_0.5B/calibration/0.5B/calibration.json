@@ -1,0 +1,86 @@
+{
+  "chosen": {
+    "meg_partition": "bigram",
+    "meg_bigram_threshold": 0.4
+  },
+  "valid": true,
+  "rule": "median modes in [2,4], closest to 3; tie -> bigram",
+  "base_correctness": 0.3776041666666667,
+  "n_prompts": 96,
+  "group_size": 8,
+  "candidates": [
+    {
+      "method": "embedding",
+      "meg_tau_mode": 0.8,
+      "groups_used": 40,
+      "median_modes": 1.0,
+      "frac_multi_mode": 0.025,
+      "mean_group_mode_entropy": 0.04373889204053757
+    },
+    {
+      "method": "embedding",
+      "meg_tau_mode": 0.85,
+      "groups_used": 40,
+      "median_modes": 1.0,
+      "frac_multi_mode": 0.125,
+      "mean_group_mode_entropy": 0.08130912431479594
+    },
+    {
+      "method": "embedding",
+      "meg_tau_mode": 0.9,
+      "groups_used": 40,
+      "median_modes": 1.0,
+      "frac_multi_mode": 0.475,
+      "mean_group_mode_entropy": 0.22565097253591557
+    },
+    {
+      "method": "embedding",
+      "meg_tau_mode": 0.95,
+      "groups_used": 40,
+      "median_modes": 3.5,
+      "frac_multi_mode": 0.875,
+      "mean_group_mode_entropy": 0.6016186994930337
+    },
+    {
+      "method": "bigram",
+      "meg_bigram_threshold": 0.3,
+      "groups_used": 40,
+      "median_modes": 5.0,
+      "frac_multi_mode": 1.0,
+      "mean_group_mode_entropy": 0.8253507474297656
+    },
+    {
+      "method": "bigram",
+      "meg_bigram_threshold": 0.4,
+      "groups_used": 40,
+      "median_modes": 3.0,
+      "frac_multi_mode": 0.9,
+      "mean_group_mode_entropy": 0.6409483613454448
+    },
+    {
+      "method": "bigram",
+      "meg_bigram_threshold": 0.5,
+      "groups_used": 40,
+      "median_modes": 2.0,
+      "frac_multi_mode": 0.6,
+      "mean_group_mode_entropy": 0.36742127683346426
+    },
+    {
+      "method": "bigram",
+      "meg_bigram_threshold": 0.6,
+      "groups_used": 40,
+      "median_modes": 1.0,
+      "frac_multi_mode": 0.35,
+      "mean_group_mode_entropy": 0.18094211111105593
+    },
+    {
+      "method": "bigram",
+      "meg_bigram_threshold": 0.7,
+      "groups_used": 40,
+      "median_modes": 1.0,
+      "frac_multi_mode": 0.05,
+      "mean_group_mode_entropy": 0.07578483018325548
+    }
+  ],
+  "created": "2026-10-06 12:13:05"
+}

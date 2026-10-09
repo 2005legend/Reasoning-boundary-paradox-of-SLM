@@ -1,0 +1,102 @@
+{
+  "annotators": 2,
+  "h1": {
+    "items": 60,
+    "kappa": 0.13461538461538453,
+    "n_rated_by_all": 60,
+    "n_consensus": 51,
+    "raw_agreement": 0.85,
+    "per_annotator": {
+      "annotator_A": {
+        "counts": {
+          "SAME": 58,
+          "DIFFERENT": 2
+        },
+        "accuracy": 0.5333333333333333
+      },
+      "annotator_B": {
+        "counts": {
+          "SAME": 51,
+          "DIFFERENT": 9
+        },
+        "accuracy": 0.55
+      }
+    },
+    "consensus_counts": {
+      "SAME": 50,
+      "DIFFERENT": 1
+    },
+    "partitioner_accuracy": 0.5490196078431373,
+    "partitioner_balanced_accuracy": 0.77,
+    "human_different_given_partitioner_different": 0.041666666666666664,
+    "human_different_given_partitioner_same": 0.0
+  },
+  "h2": {
+    "items": 40,
+    "kappa": -0.05932203389830514,
+    "n_rated_by_all": 40,
+    "n_consensus": 15,
+    "raw_agreement": 0.375,
+    "per_annotator": {
+      "annotator_A": {
+        "counts": {
+          "VALID": 11,
+          "FLAWED": 29
+        },
+        "groups": {
+          "exited": {
+            "n": 20,
+            "valid": 7
+          },
+          "retained": {
+            "n": 20,
+            "valid": 4
+          },
+          "fisher_p": 0.48011535108309306
+        }
+      },
+      "annotator_B": {
+        "counts": {
+          "VALID": 28,
+          "FLAWED": 12
+        },
+        "groups": {
+          "exited": {
+            "n": 20,
+            "valid": 17
+          },
+          "retained": {
+            "n": 20,
+            "valid": 11
+          },
+          "fisher_p": 0.08235877701951116
+        }
+      }
+    },
+    "consensus_counts": {
+      "VALID": 7,
+      "FLAWED": 8
+    },
+    "groups": {
+      "exited": {
+        "n": 6,
+        "valid": 5,
+        "rate": 0.8333333333333334,
+        "ci": [
+          0.43649056343635395,
+          0.9699474141282697
+        ]
+      },
+      "retained": {
+        "n": 9,
+        "valid": 2,
+        "rate": 0.2222222222222222,
+        "ci": [
+          0.06322376231222723,
+          0.5474166563271946
+        ]
+      }
+    },
+    "fisher_p": 0.040559440559440565
+  }
+}

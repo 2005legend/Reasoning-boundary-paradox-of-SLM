@@ -1,0 +1,32 @@
+{
+  "settings": {
+    "benchmark": "math500",
+    "n_problems": 50,
+    "n_samples": 10,
+    "k_values": [
+      1,
+      2,
+      3,
+      5,
+      10
+    ],
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "max_new_tokens": 1024,
+    "sample_seed": 1234
+  },
+  "pass_at_k": {
+    "1": 0.26,
+    "2": 0.34488888888888886,
+    "3": 0.39833333333333326,
+    "5": 0.4627777777777778,
+    "10": 0.54
+  },
+  "ceiling_flags": {
+    "1": false,
+    "2": false,
+    "3": false,
+    "5": false,
+    "10": false
+  }
+}

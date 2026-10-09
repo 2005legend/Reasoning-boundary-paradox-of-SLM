@@ -1,0 +1,30 @@
+Shutdown scheduled for Thu 2026-10-08 21:19:14 UTC, use 'shutdown -c' to cancel.
+Safety shutdown armed in 42h. Cancel with: sudo shutdown -c
+=== 2026-10-07 03:19:14 START: train vanilla 1 0.5B
+    log: /home/ubuntu/artifacts/logs/train_vanilla_1_0.5B_.log
+=== 2026-10-07 06:46:55 DONE: train vanilla 1 0.5B
+=== 2026-10-07 06:46:55 START: train heg_grpo 1 0.5B
+    log: /home/ubuntu/artifacts/logs/train_heg_grpo_1_0.5B_.log
+=== 2026-10-07 10:12:49 DONE: train heg_grpo 1 0.5B
+=== 2026-10-07 10:12:49 START: train h_cb_grpo 1 0.5B
+    log: /home/ubuntu/artifacts/logs/train_h_cb_grpo_1_0.5B_.log
+=== 2026-10-07 15:49:18 DONE: train h_cb_grpo 1 0.5B
+=== 2026-10-07 15:49:18 START: train meg 1 0.5B
+    log: /home/ubuntu/artifacts/logs/train_meg_1_0.5B_.log
+=== 2026-10-07 21:07:32 DONE: train meg 1 0.5B
+=== 2026-10-07 21:07:32 START: train cb_grpo 1 0.5B
+    log: /home/ubuntu/artifacts/logs/train_cb_grpo_1_0.5B_.log
+=== 2026-10-08 02:25:33 DONE: train cb_grpo 1 0.5B
+=== 2026-10-08 02:25:33 START: train o_self 1 0.5B
+    log: /home/ubuntu/artifacts/logs/train_o_self_1_0.5B_.log
+=== 2026-10-08 08:02:43 DONE: train o_self 1 0.5B
+=== 2026-10-08 08:02:43 START: train heg_grpo 2 0.5B
+    log: /home/ubuntu/artifacts/logs/train_heg_grpo_2_0.5B_.log
+=== 2026-10-08 13:23:47 DONE: train heg_grpo 2 0.5B
+=== 2026-10-08 13:23:47 START: train vanilla 2 0.5B
+    log: /home/ubuntu/artifacts/logs/train_vanilla_2_0.5B_.log
+=== 2026-10-08 18:45:12 DONE: train vanilla 2 0.5B
+Final S3 sync of /home/ubuntu/artifacts -> s3://heg-grpo-sidaarth-2026/heg-grpo
+Queue finished: 8 lines done (state: /home/ubuntu/artifacts/queue_state/main_0.5B_B2.txt.done)
+Shutting down the instance (stops billing for compute).
+Shutdown scheduled for Fri 2026-10-09 04:30:00 UTC, use 'shutdown -c' to cancel.

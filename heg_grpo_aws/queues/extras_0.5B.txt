@@ -1,0 +1,9 @@
+# Extras, only if the pilot report says they fit. Same --train-args as the main queue.
+# Random-partition control: is HEG's micro benefit from the clustering, or from redistribution itself?
+train heg_grpo 0 0.5B --meg_random_partition --tag randpart
+train heg_grpo 1 0.5B --meg_random_partition --tag randpart
+train heg_grpo 2 0.5B --meg_random_partition --tag randpart
+# BBG-style problem gate (arXiv:2606.15455), GRPO-compatible variant
+train bbg 0 0.5B
+train bbg 1 0.5B
+train bbg 2 0.5B

@@ -320,6 +320,10 @@ printed step 10.
 
 ## 6. Local training track (2026-09-23) — separate from the Kaggle notebook, not yet built
 
+> **Superseded 2026-10-02 by §7 (AWS track).** The user now has $200 of AWS credits and chose
+> AWS EC2 over local GPUs. Steps 2 and the single-GPU design below were implemented in
+> `heg_grpo_aws/` (without Unsloth, so the Unsloth compatibility risk no longer applies).
+
 Started because the wall-clock problem (§5.2 — `standard` tier projects to ~73h on Kaggle's
 2xT4 as configured) makes Kaggle's session cap a real obstacle, and the user has two local
 GPU options: their laptop (RTX 3050, **4GB VRAM**) and a desktop they can borrow (RTX 3060,
@@ -371,7 +375,100 @@ the RTX 3060 the user is borrowing):**
 
 ---
 
-## 7. Changelog
+## 7. AWS training track (2026-10-02) — `heg_grpo_aws/`, built and tested, not yet run on AWS
+
+**Why:** $200 AWS credits (expire end of 2027). Kaggle projected ~60-73h per run, and the full
+ablation is 12+ runs. User decisions (2026-10-02): **bf16 LoRA instead of 4-bit QLoRA** at 0.5B,
+and **EC2 + JupyterLab** (not SageMaker). Training runs in `tmux`; JupyterLab is for
+monitoring only.
+
+**What it is:** a standalone package (`heg_grpo_aws/`, 195 KB) built from cell 45's
+`TRAIN_SCRIPT_SRC`, which is the code that actually ran on Kaggle. `README.md` in that folder is
+the step-by-step AWS runbook. It ends the "two copies of the training code drift" problem for
+this track: there is one copy.
+
+**Methodology differences vs the Kaggle notebook (state these in the paper's setup section;
+the full table is in `heg_grpo_aws/README.md`):**
+- bf16 base + fp32 LoRA adapters, single GPU, plain PyTorch loop (no accelerate/DDP, so the
+  §5.3/§5.5 bug class cannot occur).
+- 16 prompts x 8 rollouts per update (Kaggle: 32 x 4; same 128 completions). G=8 gives MEG
+  enough rollouts per group to resolve modes.
+- `lora_dropout` 0, so the update is exactly on-policy (old = new.detach()). On Kaggle,
+  dropout 0.05 made old/new log-probs differ randomly.
+- Scoring uses the exact sampled token ids (no re-tokenization of the text), fp32
+  log-softmax, and chunked backward (tested: identical gradient to full-batch).
+- Sampling is fully specified: Qwen's generation_config had silently added `top_k=20`,
+  `repetition_penalty=1.05` to every Kaggle run; now `top_k` is off and the penalty is 1.0.
+- **Two answer-scoring bugs fixed (both also present in the Kaggle notebook):**
+  1. `\boxed\{(.*?)\}` truncated nested answers (`\boxed{\frac{1}{2}}` -> `\frac{1`), which
+     would have corrupted MATH-500 scoring. Now the last balanced `\boxed{}` is used.
+  2. `50%` was converted to 0.5, so a correct GSM8K percent answer vs ground truth `50`
+     scored wrong. Now `%` is stripped.
+- **Safety fix:** `sympy.parse_expr` `eval()`s its input, and that input was raw model output
+  with no timeout. Input is now whitelisted and capped at 2 s, so a garbage answer like
+  `9^9^9^9` cannot hang a paid run.
+- Final eval: a fixed 500-problem subset x 32 samples, k up to 32, identical for base and
+  every run. Per-problem correctness matrices are saved.
+
+**Verification done (all local, $0):** 33 CPU tests pass. They port the notebook self-tests
+and add the parser, injection guard, scoring-mask alignment vs a naive reference,
+chunked-gradient equivalence and checkpoint round-trip. A real Qwen2.5-0.5B end-to-end run on
+CPU confirmed: correctness 0.38 at step 0, the HEG gate down-weighted 37.5% of rollouts, grad
+norm 0.35, and KL to base rose 0 -> 0.0031 after one update (weights genuinely move).
+Resume-from-checkpoint, the config-mismatch guard, merged-adapter eval and the queue runner
+were all exercised. `analyze.py` reproduced a known synthetic answer.
+
+**Open decisions (the pilot decides them, not guesses):**
+1. **Learning rate.** The spec default 1e-6 is low for LoRA (LoRA usually needs 1e-5 or
+   higher). If the policy barely moves there is no shrinkage to measure.
+   `queues/pilot.txt` runs 1e-6 vs 1e-5; `pilot_report.py` checks whether KL to base rises.
+2. **Steps per run.** `pilot_report.py` converts measured seconds/step into $/run and the
+   number of runs that fit in 85% of $200.
+3. **The headline comparison needs 1.5B.** Req 33.4/39.8 forbid `o_self`/`h_cb_grpo` at
+   0.5B, so HEG-GRPO vs H-CB-GRPO (the comparison the paper rests on) cannot be run at 0.5B
+   as specified. Either budget the 1.5B queue (`queues/main_1.5B.txt`, ~2-3x per-step cost)
+   or deliberately revisit that spec rule (its stated reason is "N2 techniques only validated
+   at 1.5B+", a scoping choice, not a memory limit).
+
+---
+
+## 8. Third novelty check + design fixes (2026-10-03)
+
+Full report: `claude science/novelty_verification_2026-10-03.md`. Summary:
+
+- **Novelty**: all cited IDs verified real (full-text reads). New close prior art: Cue-GRPO
+  (2608.03467) = MEG's mechanism; ReCo (2607.26862) = two complementary *within-prompt* levels;
+  MT-GRPO (2602.05547), CurveRL (2605.24331), BBG (2606.15455) = cross-prompt reweighting. The
+  surviving claim is the **complementarity test of a latent topic-level budget and intra-group
+  credit redistribution** at SLM scale. Revised abstract in the report.
+- **Corrections to the 23 Sep notes**: the 2606.15455 zero-success filter is a current-group bucket
+  needing a signed REINFORCE loss (zero gradient under GRPO); 2607.02869 used the 0.5B *base* model;
+  real SELF = greedy-failure selection.
+- **Bottlenecks found and fixed in `heg_grpo_aws/`** (user decisions in brackets):
+  1. O-SELF's EMA never fired (~1.7 visits/prompt vs ~12 needed) so `h_cb_grpo == cb_grpo`
+     -> real SELF greedy-failure gate, greedy answer from pinned argmax rows in the same generate
+     call [real SELF, allowed at 0.5B].
+  2. GSM8K has ~0.7% multi-approach problems (2606.29985) -> train on MATH, macro topics = 7 subjects
+     [switch to MATH].
+  3. MEG was down-weight-only (confounded with a lower positive lr) -> mean-preserving rarity credit
+     redistribution (Cue-GRPO rule, alpha 0.8) + random-partition control [credit redistribution].
+  4. Embedding modes may be phrasing -> pre-registered calibration (embedding vs bigram) on base rollouts.
+  5. Inert format reward -> correctness-only, Math-Verify, standard Qwen math prompt.
+  6. Mode entropy only logged for MEG runs -> diagnostics for every condition, plus mean positive
+     gate weight and group dumps.
+  7. N4 underpowered -> `PREREGISTRATION.md`: P1 heg vs h_cb, P2 heg vs meg (Holm), interactions as
+     bounds; `analyze.py` seed-paired contrasts with a seeds x problems bootstrap.
+  8. Eval cost unmeasured -> `--eval_probe` in the pilot; `pilot_report.py` budgets from it.
+  Extras queue (if budget allows): random-partition control + BBG-style baseline.
+- **Spec deviations** (recorded in `heg_grpo_aws/PREREGISTRATION.md`): Req 4 (dataset), Req 8 (SELF),
+  Req 13 (format weight 0), Req 33.4/39.8 (0.5B rule removed), Req 44 (MEG rule).
+- **Verification**: 47 CPU tests (incl. greedy rows == do_sample=False, Math-Verify on MATH answers,
+  BBG utility vs the paper's Table 4, analysis helpers vs reference); analyze.py recovers a known
+  synthetic answer; real-model CPU end-to-end on MATH for every condition (see changelog).
+
+---
+
+## 9. Changelog
 
 - **2026-09-22** — Reviewed existing 0.5B CB-GRPO/Vanilla training logs and eval doc;
   found the "vanilla didn't learn" claim contradicted by the vanilla run's own reward
@@ -401,3 +498,113 @@ the RTX 3060 the user is borrowing):**
   infeasible on Kaggle as currently configured (§5.2) — needs a wall-clock decision before
   that tier is launched. The currently-running Kaggle smoke test predates both code fixes;
   re-launch after pulling the updated notebook to get correct gradient accumulation.
+- **2026-10-02** — Moved training to AWS ($200 credits). Built `heg_grpo_aws/`: a standalone
+  single-GPU bf16-LoRA package with a runbook, setup script, unattended queue runner (resume,
+  S3 sync, auto-shutdown, stop after 2 failures), pilot go/no-go report, final-eval and
+  analysis scripts, and a JupyterLab monitor. Fixed nested-`\boxed{}` truncation, `%` scoring,
+  and unguarded sympy `eval` (all three also present in the Kaggle notebook; not back-ported).
+  Verified with 33 CPU tests plus a real-model CPU end-to-end run (§7). Next: AWS console
+  setup, then the pilot.
+- **2026-10-03** — Third novelty check with the scholar connectors (§8; report in
+  `claude science/novelty_verification_2026-10-03.md`): claim narrowed to the topic-level x
+  intra-group complementarity test. Found O-SELF never fired in the AWS config and that GSM8K leaves
+  MEG no real approach diversity. Implemented: MATH training (subjects = macro topics), real SELF
+  allowed at 0.5B, MEG as mean-preserving credit redistribution with calibrated partitioner and
+  random-partition control, BBG-style baseline, correctness-only reward with Math-Verify,
+  diagnostics for all conditions, pre-registration with Holm-corrected primaries and a seeds x
+  problems bootstrap, measured eval cost in the pilot. Next: AWS setup, pilot, fill the `[pilot]`
+  values in `heg_grpo_aws/PREREGISTRATION.md`, main queue.
+- **2026-10-04** — Pre-AWS rehearsal on WSL Ubuntu 24.04 (same OS as the AMI): the real
+  `setup_instance.sh` in a fresh home, then `start_jupyter.sh` and the control notebook's own cells
+  driving a CPU-sized pilot queue through tmux and `run_queue.sh` in HF offline mode, then every
+  monitor-notebook cell. Fixed what it found: `math-verify` was missing from `requirements.txt`
+  (a fresh install would have silently used the weaker sympy checker on MATH; the test now fails
+  instead of skipping); the hf-xet download client stalled the model prefetch indefinitely
+  (prefetch now uses plain HTTP with retries: 44 s instead of a hang); `train.py` now refuses
+  `meg`/`heg_grpo` without a calibration file instead of silently using the uncalibrated
+  partitioner; the pilot budget now includes the main runs' in-training monitor evals; the pilot
+  launch arms a 4 h power-off; stale README pointers in the scripts and notebook fixed. AMI: the
+  "Base OSS Nvidia Driver" AMI is no longer listed; use "Deep Learning Base AMI with Single CUDA
+  (Ubuntu 24.04)", x86 (20260721: driver 595.71, G5 supported; PyPI torch 2.13 is CUDA 13.0 and
+  needs >= 580). Setup now installs the AWS CLI if the AMI lacks it.
+- **2026-10-05** — Paper reframed around three research gaps (evidence: `claude science/research_gaps_2026-10-05.md`):
+  1. **contradiction.** Is Pass@k shrinkage real? Yue/Nguyen/Wu&Xuan say it shrinks, ProRL/Wen say it
+     expands, Yao says both, Yuan/Dragoi say it is partly a measurement artifact.
+  2. **methodological.** All evidence is automatic. CoT-Pass@k judges accept corrupted chains (2609.32622), and
+     approach diversity was judged by an LLM calibrated on 80 human pairs (2606.29985), so nobody has asked
+     people what RLVR loses.
+  3. **novelty.** The composition test, unchanged.
+
+  Added a pre-registered, blinded two-annotator human audit:
+  - **H1:** partition validity on 60 solution pairs (κ, balanced accuracy, 70% bar).
+  - **H2:** valid-reasoning rate of base successes on exited vs difficulty-matched retained problems
+    (Fisher test, pre-registered lucky / genuine / mixed reading).
+
+  Code changes:
+  - final evals now save all completions (`*_completions.jsonl.gz`), which is required for H2 and so had to
+    land before the main runs;
+  - `scripts/human_eval.py` (sheets and scoring) + `HUMAN_EVAL_GUIDE.md`; `PREREGISTRATION.md` dated addition;
+    a `control.ipynb` step;
+  - 50 tests pass; real-model eval checked writing completions.
+
+  Paper: new title, abstract, introduction and related work (8 new arXiv references, verified from abstract-page
+  citation metadata); a human-audit protocol and results; a discussion that answers the debate. Algorithm 1 was
+  removed for space. The paper is still 6 pages.
+- **2026-10-06** — First AWS pilot (A10G).
+  - **Calibration (96 prompts, base correctness 0.378):** the pre-registered rule chose word-bigram at
+    threshold 0.4 (median 3 modes, 90% multi-mode). Embedding τ=0.85, the old default, gives a median of 1 mode
+    (12% multi-mode), which confirms on real data that the old MEG was near a no-op.
+  - **OOM.** Both 30-step pilots ran out of memory at step 3, in backward with 4 sequences per chunk once
+    completions reached 1,024 tokens. Steps took 146 s, 89% of it generation.
+  - **Fix**, from measured benchmarks:
+    - 16 prompts in one generate call (78.9 vs 2 × 64.6 ms per decode step);
+    - rollouts sampled from a bf16 merged copy of the LoRA model (61.5 ms);
+    - backward chunks of 2;
+    - eval 8 problems per call;
+    - expandable CUDA segments.
+    The median step is now ~89 s.
+  - **A runtime "merged copy carries the adapter" check false-alarmed twice.** Early on, the update is below
+    bf16 noise. Verified on the step-15 adapter scaled ×1/×10/×100: per-token KL from the exact fp32 policy is
+    4.9e-3 / 9.3e-3 / 6.8e-3 for the merged copy vs 5.3e-3 / 7.9e-3 / 4.4e-3 for the bf16 LoRA path, and
+    1.2e-1 for the base model at ×100. The merged copy, and therefore the bf16-merged final eval, keeps
+    realistic updates. The check is now log-only.
+  - **CB early read:** spend EMA across subjects is 0.023–0.146 at step 15; only one subject is above
+    1.5× the mean, giving ~0.2% throttling. This confirms the open "CB strength" decision.
+- 2026-10-06 (later): **pilot finished, main runs launched.**
+  - Pilot: heg_grpo at lr 1e-6 and 1e-5 (30 steps each), o_self (10 steps). Every check passed.
+    Median step 89-95 s; final eval 14.8 s per MATH-500 problem (3.08 h per model with GSM8K).
+    Zero-variance groups 0.51; truncation 13%; SELF skips 38-50% of prompts.
+  - The logged "KL to base" sits at a bf16 noise floor (~2e-4) at either lr, so it says nothing in a short
+    pilot. The lora_B norm is 10x larger at 1e-5, as expected. `pilot_report.py` now reports the adapter
+    norm and treats KL as movement only above 1e-3.
+  - CB never fired (subject spend ratios 0.38-1.46 at step 30). Changed before any main run (pre-registration
+    deviation 6): θ = 1.1, δ = 0.18, positive-advantage rollouts only, mean-preserving. A 4-step smoke run
+    down-weighted 10-22% of rollouts from step 1 with the mean positive weight at 1.000. 52 tests pass.
+  - Decisions (user): lr 1e-5, 240 steps, levels 1-5, 3 seeds, full eval for every model, one instance.
+    Projected ~170 GPU-h, about $171, about 7 days. Extras only if money is left.
+  - Launched `queues/main_0.5B.txt` at 15:45 UTC in tmux `train`: `--train-args "--steps 240 --lr 1e-5"
+    --max-hours 190 --shutdown-when-done`, S3 sync on.
+- 2026-10-09: **main runs finished, analysed, paper filled.**
+  - 16 runs: seeds 0-1 for all six conditions, seed 2 for heg_grpo, h_cb_grpo, meg and vanilla. Instance B was
+    lost on 2026-10-07 (seed 1, step ~85: memory blow-up in answer checking, now guarded in a capped worker);
+    the replacement resumed from the step-75 checkpoints.
+  - Result: no shrinkage at 120 steps (~2 rollouts per training problem). Vanilla Pass@1 30.3 -> 30.4%,
+    Pass@32 73.0 -> 75.3%, slope +0.66 pp/ln k; every condition has more entries than exits.
+    P1 = -0.02 [-0.79, +0.68], P2 = +0.22 [-0.60, +1.05] (bootstrap, pp/ln k), Holm p = 1.0: bounded null.
+  - Mechanism (scripts/mechanism.py, descriptive): more distinct correct modes went with MORE exits
+    (rho +0.57, p 0.02, n 16); topic credit share does not predict topic Pass@32 change (rho +0.01, n 28).
+  - Results copied to `results_0.5B/` (no checkpoints) and S3. Human-audit sheets built
+    (results_0.5B/human_eval/annotator_A, _B); scoring waits for two annotators.
+  - Paper: numbers from fill_numbers.py --artifacts ../results_0.5B --gpu_hours 86 --usd 87; R1-R18 rewritten for
+    this outcome; human-audit sentences keep TODOs until the labels are in. Both instances stopped.
+- 2026-10-09 (later): **human audit scored.** Files: results_0.5B/human_eval/annotator_A_labeled/ and
+  "h1_pairs_labeled B.csv", "h2_solutions_labeled B.csv" (annotators are not authors). Scored with
+  scripts/human_eval.py (now also writes per-annotator and consensus counts) into analysis/human_eval.json.
+  H1: kappa 0.13; humans said SAME for 50 of 51 consensus pairs, so the partitioner's modes are mostly surface
+  clusters. H2: kappa -0.06, inconclusive. Paper updated (abstract, V-D, discussion, limitations, conclusion), 6 pages.
+- 2026-10-09 (evening): adopted the verified points of claude science/results_reframing_2026-10-09.md:
+  PABAK and an always-same baseline for H1, contrast CIs restated as k=1->32 gain (slope x ln 32), interactions
+  reported as open, BH-adjusted p for the descriptive correlations (0.16, not significant), between-seed slope SD
+  (vanilla 0.04 vs MEG 0.40), training-intensity reading and the partition-as-weak-link discussion. Not adopted:
+  the claim that the H1 bar was "not met" (balanced accuracy is 77%, reported with its caveat), an unverified EDAS
+  statistic, and treating the intensity reading as confirmed (one intensity level was run).

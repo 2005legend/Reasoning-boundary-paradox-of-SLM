@@ -1,0 +1,3 @@
+h1_pairs.csv: label = SAME or DIFFERENT (approach), UNSURE if you cannot decide.
+h2_solutions.csv: label = VALID or FLAWED (reasoning), UNSURE if you cannot decide.
+Definitions and examples: HUMAN_EVAL_GUIDE.md. Work alone; do not discuss items.

@@ -1,0 +1,13 @@
+# Deadline split (2026-10-06), instance A: base + all of seed 0 + half of seed 2.
+# Run with: run_queue.sh queues/main_0.5B_A.txt --benchmarks math500 --train-args "--steps 120 --lr 1e-5"
+# Instance B runs main_0.5B_B.txt. Together they are main_0.5B.txt (same lines, same order within a seed).
+base 0.5B
+train vanilla 0 0.5B
+train heg_grpo 0 0.5B
+train h_cb_grpo 0 0.5B
+train meg 0 0.5B
+train cb_grpo 0 0.5B
+train o_self 0 0.5B
+train vanilla 2 0.5B
+train heg_grpo 2 0.5B
+train h_cb_grpo 2 0.5B

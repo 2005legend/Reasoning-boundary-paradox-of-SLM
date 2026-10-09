@@ -1,0 +1,74 @@
+[2026-10-08 13:23:51] run=vanilla size=0.5B seed=2 tier=standard steps=120 device=cuda gpu=NVIDIA A10G
+[2026-10-08 13:23:53] [after model load] allocated=1.02GB peak=1.02GB
+Using the latest cached version of the dataset since EleutherAI/hendrycks_math couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'algebra' at /home/ubuntu/.cache/huggingface/datasets/EleutherAI___hendrycks_math/algebra/0.0.0/21a5633873b6a120296cce3e2df9d5550074f4a3 (last modified on Wed Oct  7 03:17:48 2026).
+Using the latest cached version of the dataset since EleutherAI/hendrycks_math couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'counting_and_probability' at /home/ubuntu/.cache/huggingface/datasets/EleutherAI___hendrycks_math/counting_and_probability/0.0.0/21a5633873b6a120296cce3e2df9d5550074f4a3 (last modified on Wed Oct  7 03:17:49 2026).
+Using the latest cached version of the dataset since EleutherAI/hendrycks_math couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'geometry' at /home/ubuntu/.cache/huggingface/datasets/EleutherAI___hendrycks_math/geometry/0.0.0/21a5633873b6a120296cce3e2df9d5550074f4a3 (last modified on Wed Oct  7 03:17:49 2026).
+Using the latest cached version of the dataset since EleutherAI/hendrycks_math couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'intermediate_algebra' at /home/ubuntu/.cache/huggingface/datasets/EleutherAI___hendrycks_math/intermediate_algebra/0.0.0/21a5633873b6a120296cce3e2df9d5550074f4a3 (last modified on Wed Oct  7 03:17:49 2026).
+Using the latest cached version of the dataset since EleutherAI/hendrycks_math couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'number_theory' at /home/ubuntu/.cache/huggingface/datasets/EleutherAI___hendrycks_math/number_theory/0.0.0/21a5633873b6a120296cce3e2df9d5550074f4a3 (last modified on Wed Oct  7 03:17:50 2026).
+Using the latest cached version of the dataset since EleutherAI/hendrycks_math couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'prealgebra' at /home/ubuntu/.cache/huggingface/datasets/EleutherAI___hendrycks_math/prealgebra/0.0.0/21a5633873b6a120296cce3e2df9d5550074f4a3 (last modified on Wed Oct  7 03:17:50 2026).
+Using the latest cached version of the dataset since EleutherAI/hendrycks_math couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'precalculus' at /home/ubuntu/.cache/huggingface/datasets/EleutherAI___hendrycks_math/precalculus/0.0.0/21a5633873b6a120296cce3e2df9d5550074f4a3 (last modified on Wed Oct  7 03:17:51 2026).
+Using the latest cached version of the dataset since HuggingFaceH4/MATH-500 couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'default' at /home/ubuntu/.cache/huggingface/datasets/HuggingFaceH4___math-500/default/0.0.0/6e4ed1a2a79af7d8630a6b768ec859cb5af4d3be (last modified on Wed Oct  7 03:17:51 2026).
+[2026-10-08 13:23:54] 7494 math train prompts, 50 math500 monitor problems; 0.26 epochs = 2.0 rollouts per training problem
+[2026-10-08 13:23:54] Macro topics = MATH subjects: {'Algebra': 1742, 'Counting & Probability': 771, 'Geometry': 868, 'Intermediate Algebra': 1295, 'Number Theory': 867, 'Prealgebra': 1205, 'Precalculus': 746}
+[2026-10-08 13:23:54] Gate: vanilla | mode partition: bigram
+[2026-10-08 13:23:54] Training 120 steps: 16 prompts x 8 rollouts x 1 micro-steps per update, lr=1e-05
+[2026-10-08 13:25:33] step    0/120 |  99.2s | reward=+0.188 cor=0.19 zv=0.56 | gate_w=1.000 pos_w=1.000 ent=0.460 | kl=0.0000 | len=620 trunc=0.16 | lr=0.00e+00 | ETA 03h16m | $0.03 so far, ~$3.30 left
+[2026-10-08 13:33:36] step    5/120 | 118.7s | reward=+0.141 cor=0.14 zv=0.56 | gate_w=1.000 pos_w=1.000 ent=0.958 | kl=0.0003 | len=558 trunc=0.12 | lr=4.17e-06 | ETA 02h57m | $0.16 so far, ~$2.97 left
+[2026-10-08 13:41:25] step   10/120 |  90.9s | reward=+0.344 cor=0.34 zv=0.62 | gate_w=1.000 pos_w=1.000 ent=0.723 | kl=0.0002 | len=598 trunc=0.19 | lr=8.33e-06 | ETA 02h45m | $0.29 so far, ~$2.77 left
+[2026-10-08 13:48:30] step   15/120 |  87.3s | reward=+0.383 cor=0.38 zv=0.31 | gate_w=1.000 pos_w=1.000 ent=0.613 | kl=0.0003 | len=541 trunc=0.12 | lr=9.98e-06 | ETA 02h35m | $0.41 so far, ~$2.61 left
+[2026-10-08 13:55:34] step   20/120 |  87.1s | reward=+0.258 cor=0.26 zv=0.56 | gate_w=1.000 pos_w=1.000 ent=0.677 | kl=0.0003 | len=559 trunc=0.10 | lr=9.87e-06 | ETA 02h25m | $0.53 so far, ~$2.43 left
+[2026-10-08 14:01:12] merged-generation gap (mean |dlogit|): copy-vs-LoRA 1.01e-01, base-vs-LoRA 1.17e-01
+/home/ubuntu/venv/lib/python3.11/site-packages/peft/utils/save_and_load.py:300: UserWarning: Could not find a config file in Qwen/Qwen2.5-0.5B-Instruct - will assume that the vocabulary was not modified.
+  warnings.warn(
+[2026-10-08 14:01:12] checkpoint saved at step 25
+[2026-10-08 14:03:03] step   25/120 | 111.2s | reward=+0.266 cor=0.27 zv=0.38 | gate_w=1.000 pos_w=1.000 ent=0.918 | kl=0.0002 | len=544 trunc=0.13 | lr=9.65e-06 | ETA 02h14m | $0.66 so far, ~$2.26 left
+[2026-10-08 14:10:25] step   30/120 |  85.5s | reward=+0.312 cor=0.31 zv=0.56 | gate_w=1.000 pos_w=1.000 ent=0.792 | kl=0.0003 | len=506 trunc=0.11 | lr=9.33e-06 | ETA 02h05m | $0.78 so far, ~$2.10 left
+[2026-10-08 14:18:28] step   35/120 | 123.3s | reward=+0.305 cor=0.30 zv=0.38 | gate_w=1.000 pos_w=1.000 ent=0.948 | kl=0.0006 | len=596 trunc=0.10 | lr=8.92e-06 | ETA 01h59m | $0.92 so far, ~$2.00 left
+[2026-10-08 14:27:00] step   40/120 |  89.5s | reward=+0.312 cor=0.31 zv=0.50 | gate_w=1.000 pos_w=1.000 ent=0.704 | kl=0.0005 | len=597 trunc=0.16 | lr=8.43e-06 | ETA 01h55m | $1.06 so far, ~$1.93 left
+[2026-10-08 14:34:42] step   45/120 |  89.4s | reward=+0.156 cor=0.16 zv=0.62 | gate_w=1.000 pos_w=1.000 ent=0.581 | kl=0.0003 | len=627 trunc=0.23 | lr=7.87e-06 | ETA 01h52m | $1.19 so far, ~$1.89 left
+[2026-10-08 14:40:30] merged-generation gap (mean |dlogit|): copy-vs-LoRA 9.28e-02, base-vs-LoRA 1.94e-01
+/home/ubuntu/venv/lib/python3.11/site-packages/peft/utils/save_and_load.py:300: UserWarning: Could not find a config file in Qwen/Qwen2.5-0.5B-Instruct - will assume that the vocabulary was not modified.
+  warnings.warn(
+[2026-10-08 14:40:31] checkpoint saved at step 50
+[2026-10-08 14:41:53] step   50/120 |  82.7s | reward=+0.438 cor=0.44 zv=0.56 | gate_w=1.000 pos_w=1.000 ent=0.707 | kl=0.0011 | len=542 trunc=0.10 | lr=7.24e-06 | ETA 01h43m | $1.31 so far, ~$1.73 left
+[2026-10-08 14:49:15] step   55/120 |  94.6s | reward=+0.297 cor=0.30 zv=0.50 | gate_w=1.000 pos_w=1.000 ent=0.646 | kl=0.0011 | len=615 trunc=0.08 | lr=6.57e-06 | ETA 01h35m | $1.43 so far, ~$1.60 left
+[2026-10-08 14:56:25] step   60/120 |  94.1s | reward=+0.367 cor=0.37 zv=0.62 | gate_w=1.000 pos_w=1.000 ent=0.825 | kl=0.0020 | len=611 trunc=0.19 | lr=5.87e-06 | ETA 01h27m | $1.55 so far, ~$1.47 left
+[2026-10-08 15:05:08] step   65/120 |  78.8s | reward=+0.352 cor=0.35 zv=0.44 | gate_w=1.000 pos_w=1.000 ent=0.613 | kl=0.0021 | len=516 trunc=0.08 | lr=5.15e-06 | ETA 01h18m | $1.70 so far, ~$1.31 left
+[2026-10-08 15:12:58] step   70/120 | 125.8s | reward=+0.398 cor=0.40 zv=0.12 | gate_w=1.000 pos_w=1.000 ent=0.831 | kl=0.0016 | len=532 trunc=0.07 | lr=4.42e-06 | ETA 01h11m | $1.83 so far, ~$1.20 left
+[2026-10-08 15:18:38] merged-generation gap (mean |dlogit|): copy-vs-LoRA 9.66e-02, base-vs-LoRA 2.67e-01
+/home/ubuntu/venv/lib/python3.11/site-packages/peft/utils/save_and_load.py:300: UserWarning: Could not find a config file in Qwen/Qwen2.5-0.5B-Instruct - will assume that the vocabulary was not modified.
+  warnings.warn(
+[2026-10-08 15:18:38] checkpoint saved at step 75
+[2026-10-08 15:20:02] step   75/120 |  84.5s | reward=+0.242 cor=0.24 zv=0.62 | gate_w=1.000 pos_w=1.000 ent=0.418 | kl=0.0020 | len=539 trunc=0.08 | lr=3.71e-06 | ETA 01h02m | $1.95 so far, ~$1.04 left
+[2026-10-08 15:27:27] step   80/120 |  80.8s | reward=+0.305 cor=0.30 zv=0.44 | gate_w=1.000 pos_w=1.000 ent=0.973 | kl=0.0023 | len=604 trunc=0.12 | lr=3.02e-06 | ETA 00h56m | $2.07 so far, ~$0.94 left
+[2026-10-08 15:34:39] step   85/120 |  77.8s | reward=+0.430 cor=0.43 zv=0.44 | gate_w=1.000 pos_w=1.000 ent=0.771 | kl=0.0034 | len=513 trunc=0.07 | lr=2.38e-06 | ETA 00h48m | $2.19 so far, ~$0.82 left
+[2026-10-08 15:42:19] step   90/120 |  85.8s | reward=+0.422 cor=0.42 zv=0.25 | gate_w=1.000 pos_w=1.000 ent=0.733 | kl=0.0039 | len=481 trunc=0.07 | lr=1.79e-06 | ETA 00h41m | $2.32 so far, ~$0.70 left
+[2026-10-08 15:49:51] step   95/120 |  80.1s | reward=+0.508 cor=0.51 zv=0.56 | gate_w=1.000 pos_w=1.000 ent=0.807 | kl=0.0031 | len=470 trunc=0.08 | lr=1.26e-06 | ETA 00h34m | $2.45 so far, ~$0.59 left
+[2026-10-08 15:55:42] merged-generation gap (mean |dlogit|): copy-vs-LoRA 1.11e-01, base-vs-LoRA 3.05e-01
+/home/ubuntu/venv/lib/python3.11/site-packages/peft/utils/save_and_load.py:300: UserWarning: Could not find a config file in Qwen/Qwen2.5-0.5B-Instruct - will assume that the vocabulary was not modified.
+  warnings.warn(
+[2026-10-08 15:55:42] checkpoint saved at step 100
+[2026-10-08 16:01:10] [monitor eval @ 100] Pass@k={1: 0.264, 2: 0.36888888888888893, 3: 0.4328333333333334, 5: 0.5114285714285713, 10: 0.6} slope=+0.0247
+[2026-10-08 16:03:10] step  100/120 | 120.5s | reward=+0.289 cor=0.29 zv=0.44 | gate_w=1.000 pos_w=1.000 ent=0.854 | kl=0.0047 | len=580 trunc=0.12 | lr=8.23e-07 | ETA 00h27m | $2.67 so far, ~$0.46 left
+[2026-10-08 16:10:40] step  105/120 |  81.4s | reward=+0.469 cor=0.47 zv=0.62 | gate_w=1.000 pos_w=1.000 ent=0.498 | kl=0.0042 | len=589 trunc=0.16 | lr=4.68e-07 | ETA 00h20m | $2.80 so far, ~$0.34 left
+[2026-10-08 16:17:45] step  110/120 |  81.4s | reward=+0.289 cor=0.29 zv=0.38 | gate_w=1.000 pos_w=1.000 ent=0.733 | kl=0.0031 | len=468 trunc=0.04 | lr=2.10e-07 | ETA 00h12m | $2.91 so far, ~$0.21 left
+[2026-10-08 16:24:57] step  115/120 |  86.5s | reward=+0.336 cor=0.34 zv=0.44 | gate_w=1.000 pos_w=1.000 ent=0.858 | kl=0.0031 | len=542 trunc=0.08 | lr=5.28e-08 | ETA 00h05m | $3.04 so far, ~$0.09 left
+[2026-10-08 16:30:41] step  119/120 |  92.9s | reward=+0.133 cor=0.13 zv=0.69 | gate_w=1.000 pos_w=1.000 ent=0.787 | kl=0.0027 | len=633 trunc=0.16 | lr=2.12e-09 | ETA 00h00m | $3.13 so far, ~$0.00 left
+/home/ubuntu/venv/lib/python3.11/site-packages/peft/utils/save_and_load.py:300: UserWarning: Could not find a config file in Qwen/Qwen2.5-0.5B-Instruct - will assume that the vocabulary was not modified.
+  warnings.warn(
+[2026-10-08 16:30:41] checkpoint saved at step 120
+/home/ubuntu/venv/lib/python3.11/site-packages/peft/utils/save_and_load.py:300: UserWarning: Could not find a config file in Qwen/Qwen2.5-0.5B-Instruct - will assume that the vocabulary was not modified.
+  warnings.warn(
+[2026-10-08 16:30:43] Training complete in 03h06m -> /home/ubuntu/artifacts/runs/vanilla/0.5B/seed2
+Using the latest cached version of the dataset since HuggingFaceH4/MATH-500 couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'default' at /home/ubuntu/.cache/huggingface/datasets/HuggingFaceH4___math-500/default/0.0.0/6e4ed1a2a79af7d8630a6b768ec859cb5af4d3be (last modified on Wed Oct  7 03:17:51 2026).
+[2026-10-08 16:30:44] [eval] math500: 500 problems x 32 samples
+[2026-10-08 18:45:08] [eval] math500: Pass@k={1: 0.3014375, 2: 0.4074758064516129, 4: 0.5114398220244716, 8: 0.6056870081667189, 16: 0.6848699162885682, 32: 0.748} (134.4 min)

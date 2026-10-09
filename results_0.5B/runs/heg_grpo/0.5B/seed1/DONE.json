@@ -1,0 +1,11 @@
+{
+  "steps": 120,
+  "resumed_from": 75,
+  "train_seconds": 4302.1873507499695,
+  "median_step_seconds": 86.88486790657043,
+  "usd_estimate_this_session": 1.2022223541262416,
+  "n_train_problems": 7494,
+  "rollouts_per_prompt": 8,
+  "epochs": 0.2562049639711769,
+  "rollouts_per_training_problem": 2.0496397117694154
+}
