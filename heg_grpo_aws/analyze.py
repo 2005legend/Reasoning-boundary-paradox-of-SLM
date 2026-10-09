@@ -86,6 +86,11 @@ def main():
     p.add_argument('--artifact_root', default=DEFAULT_ARTIFACT_ROOT)
     p.add_argument('--n_boot', type=int, default=2000)
     p.add_argument('--seed', type=int, default=0)
+    p.add_argument('--eval_subdir', default='eval',
+                   help="'eval' = final evaluation; 'eval_step180' etc. = snapshot evaluations (train.py --snapshot_steps)")
+    p.add_argument('--sesoi', type=float, default=0.01,
+                   help='smallest effect of interest on the slope (0.01 = 1 pp per ln k, about 3.5 Pass@32 points); '
+                        'a contrast is called equivalent to zero if its 90%% bootstrap CI lies inside +-sesoi')
     args = p.parse_args()
 
     root = Path(args.artifact_root)
@@ -101,7 +106,7 @@ def main():
     base_ids = base_npz['prompt_ids']
 
     rows, slope, pass_k, info = defaultdict(dict), defaultdict(dict), defaultdict(dict), {}
-    for run_json in sorted((root / 'runs').glob(f'*/{args.model_size}/seed*/eval/{stem}.json')):
+    for run_json in sorted((root / 'runs').glob(f'*/{args.model_size}/seed*/{args.eval_subdir}/{stem}.json')):
         cond, seed = run_json.parents[3].name, int(run_json.parents[1].name[4:])
         res = json.loads(run_json.read_text())
         npz = np.load(run_json.with_suffix('.npz'))
@@ -171,8 +176,9 @@ def main():
     rng = np.random.default_rng(args.seed)
     n_prob = len(base_ids)
     out += ['', '## Contrasts on the shrinkage slope (paired by seed)', '',
-            '| contrast | role | seeds | estimate | 95% CI (seed t) | 95% CI (seeds x problems) | p (Holm for P) |',
-            '|---|---|---|---|---|---|---|']
+            '| contrast | role | seeds | estimate | 95% CI (seed t) | 95% CI (seeds x problems) | p (Holm for P) '
+            f'| 90% CI inside +-{args.sesoi:g}? |',
+            '|---|---|---|---|---|---|---|---|']
     primary_p = {}
     for name, (coefs, role) in CONTRASTS.items():
         if not all(c in slope for c in coefs):
@@ -191,10 +197,13 @@ def main():
             boot[b] = np.mean([sum(w * slopes_from_rows(rows[c][s][pi], br, log_k) for c, w in coefs.items())
                                for s in ss])
         lo, hi = np.percentile(boot, [2.5, 97.5])
+        lo90, hi90 = np.percentile(boot, [5, 95])
         p_boot = float(min(1.0, 2 * min((boot <= 0).mean(), (boot >= 0).mean())))
         entry = {'role': role, 'seeds': seeds, 'estimate': float(d.mean()),
                  't_ci': [float(d.mean() - half), float(d.mean() + half)],
-                 'boot_ci': [float(lo), float(hi)], 'p_boot': p_boot}
+                 'boot_ci': [float(lo), float(hi)], 'p_boot': p_boot,
+                 'boot_ci90': [float(lo90), float(hi90)], 'sesoi': args.sesoi,
+                 'equivalent_to_zero': bool(lo90 > -args.sesoi and hi90 < args.sesoi)}
         summary['contrasts'][name] = entry
         if role == 'primary':
             primary_p[name] = p_boot
@@ -210,13 +219,14 @@ def main():
         if e['role'] == 'primary' and e['p_holm'] < 0.05:
             p_txt += ' **'
         out.append(f"| {name} | {e['role']} | {len(e['seeds'])} | {e['estimate']:+.4f} | "
-                   f"[{e['t_ci'][0]:+.4f}, {e['t_ci'][1]:+.4f}] | [{e['boot_ci'][0]:+.4f}, {e['boot_ci'][1]:+.4f}] | {p_txt} |")
+                   f"[{e['t_ci'][0]:+.4f}, {e['t_ci'][1]:+.4f}] | [{e['boot_ci'][0]:+.4f}, {e['boot_ci'][1]:+.4f}] | {p_txt} "
+                   f"| {'yes' if e['equivalent_to_zero'] else 'no'} |")
     out += ['', 'Positive estimate = the first condition shrinks less. Interactions are reported as '
             'bounds (secondary), not verdicts. ** = primary contrast significant after Holm.']
 
     out_dir = root / 'analysis'
     out_dir.mkdir(parents=True, exist_ok=True)
-    fname = f'{args.benchmark}_{args.model_size}'
+    fname = f'{args.benchmark}_{args.model_size}' + ('' if args.eval_subdir == 'eval' else f'_{args.eval_subdir}')
     (out_dir / f'{fname}.md').write_text('\n'.join(out) + '\n')
     (out_dir / f'{fname}.json').write_text(json.dumps(summary, indent=2))
     print('\n'.join(out))
@@ -240,8 +250,8 @@ def main():
         fig.tight_layout()
         fig.savefig(out_dir / f'{fname}.png', dpi=150)
         print(f'\nWrote {out_dir / fname}.md/.json/.png')
-    except ImportError:
-        print(f'\nWrote {out_dir / fname}.md/.json (matplotlib missing: no plot)')
+    except (ImportError, AttributeError):
+        print(f'\nWrote {out_dir / fname}.md/.json (matplotlib missing or broken: no plot)')
 
 
 if __name__ == '__main__':

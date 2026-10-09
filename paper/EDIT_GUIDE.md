@@ -115,6 +115,7 @@ The violet text describes the **expected outcome**: a *bounded null*, Outcome B 
 | R16 | §V-C | CB flattens the per-subject profile; MEG reduces loss in every subject | Fig. 3 |
 | R17 | Abstract, §V-D | the human labels support the partitioner (balanced accuracy ≥ 70%) | `human.h1.bacc` |
 | R18 | §V-D | H2 is a *mixed* outcome | exited vs retained valid rates, Fisher p. Apply the rule below |
+| R19 | §V-B | P1/P2 equivalent to zero within the +-1 pp/ln k bound; seed-power sentence | `analyze.py` (90% CI inside +-sesoi) and `scripts/power.py`; after the extension re-run both and re-read the sentence |
 
 ### Human-audit outcomes (rules from `PREREGISTRATION.md`, "Human evaluation")
 

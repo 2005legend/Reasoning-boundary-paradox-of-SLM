@@ -64,12 +64,26 @@ def parse_args():
     p.add_argument('--eval_probe', type=int, default=0,
                    help='after training, time N in-domain problems x n_samples to measure eval cost')
     p.add_argument('--final_eval', default='', help="comma list: math500,gsm8k,gsm8k_platinum ('none' = skip)")
+    p.add_argument('--snapshot_steps', default='',
+                   help='comma list of training steps (below --steps) at which to keep an adapter snapshot; after '
+                        'training each snapshot gets the same --final_eval, written to eval_step<N>/ '
+                        '(a trajectory of Pass@k over training; analyze.py --eval_subdir eval_step<N>)')
     p.add_argument('--artifact_root', default=None)
     p.add_argument('--s3_uri', default=None)
     p.add_argument('--usd_per_hour', type=float, default=0.0, help='for live cost estimates')
     p.add_argument('--device', default=None, help='default: cuda if available else cpu')
     p.add_argument('--train_limit', type=int, default=None, help='debug: use only N train prompts')
     return p.parse_args()
+
+
+def parse_snapshot_steps(spec: str, total_steps: int) -> list:
+    """'120,180' -> [120, 180]; only steps strictly inside the run count (the last step is the final model)."""
+    steps = sorted({int(x) for x in spec.split(',') if x.strip()})
+    bad = [x for x in steps if not 0 < x < total_steps]
+    if bad:
+        raise SystemExit(f'--snapshot_steps {bad} must lie in (0, {total_steps}); the last step is evaluated as the '
+                         f'final model.')
+    return steps
 
 
 def resolve_partition(args, artifact_root: str) -> dict:
@@ -230,6 +244,7 @@ def main():
     tokenizer = load_tokenizer(cfg.model_name)
     done_path = run_dir / 'DONE.json'
     final_benchmarks = [b for b in args.final_eval.split(',') if b and b != 'none']
+    snapshot_steps = parse_snapshot_steps(args.snapshot_steps, cfg.training_steps)
 
     if not done_path.exists():
         model = load_lora_model(cfg.model_name, device, cfg.optim.lora_r, cfg.optim.lora_alpha,
@@ -370,6 +385,11 @@ def main():
                 log(f'checkpoint saved at step {step + 1}')
                 s3.sync(run_dir, remote_suffix, wait=is_last)
 
+            if (step + 1) in snapshot_steps:
+                model.save_pretrained(str(run_dir / 'snapshots' / f'step{step + 1}'))
+                log(f'adapter snapshot saved at step {step + 1}')
+                s3.sync(run_dir, remote_suffix)
+
             if cfg.eval_interval > 0 and base_pk is not None and (step + 1) % cfg.eval_interval == 0:
                 with generation_copy(model, cfg.generation.merged_generation) as gen_model:
                     pk = monitor_eval(gen_model, tokenizer, eval_problems, mon,
@@ -403,6 +423,17 @@ def main():
         for bench in final_benchmarks:
             run_benchmark_eval(model, tokenizer, bench, cfg.eval, run_dir / 'eval', log)
             s3.sync(run_dir, remote_suffix, wait=True)
+        del model
+        for n in snapshot_steps:  # trajectory: the same evaluation on each intermediate adapter
+            snap = run_dir / 'snapshots' / f'step{n}'
+            if not snap.exists():
+                log(f'snapshot for step {n} not found at {snap}; skipped')
+                continue
+            snap_model = load_adapter_for_inference(cfg.model_name, str(snap), device)
+            for bench in final_benchmarks:
+                run_benchmark_eval(snap_model, tokenizer, bench, cfg.eval, run_dir / f'eval_step{n}', log)
+                s3.sync(run_dir, remote_suffix, wait=True)
+            del snap_model
     s3.sync(run_dir, remote_suffix, wait=True)
     stdout_log.close()
 

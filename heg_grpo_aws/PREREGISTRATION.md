@@ -154,6 +154,41 @@ if so, both versions are reported.
    `vanilla` seed 2 if it finishes in time. P1 and P2 use 3 seeds; S1-S3 and E1 use the seeds every one
    of their conditions has. The seed-1 runs resume from their step-75 checkpoints.
 
+## Registered extension (2026-10-09, before any extension run)
+
+Written after the main study (16 runs, 120 steps) and before running anything below. The main-study
+results had been seen; the predictions are made with that in mind and each one can be wrong.
+
+**What will be run** (nothing here has been run yet):
+- **Extension A, more seeds** (`queues/extension_seeds_0.5B.txt`, 14 runs): every cell of the 2x3 factorial to
+  5 seeds at 120 steps.
+- **Extension B, longer training and a trajectory** (`queues/extension_240_0.5B.txt`, 12 runs): vanilla,
+  CB x SELF, MEG and CB x MEG, seeds 0-2, 240 steps, scored on MATH-500 at steps 120, 180 and 240
+  (`train.py --snapshot_steps 120,180`; `analyze.py --eval_subdir eval_step120|eval_step180|eval`).
+  The step-120 snapshot of a 240-step cosine schedule is not the finished 120-step run, so time points are
+  compared within the 240-step runs only.
+
+**Analysis.** P1 and P2 keep their definitions, now on up to 5 seeds, with the same Holm rule. Equivalence is
+reported as "90% bootstrap CI inside +-1 pp per ln k" (about 3.5 Pass@32 points); that bound was chosen after the
+main study and is labelled post hoc. The training-intensity reading is tested by the within-run change of the
+vanilla shrinkage slope between steps 120, 180 and 240, paired by seed.
+
+**Predictions** (qualitative on purpose; the main study gives no basis for numbers):
+1. **F1.** P1 and P2 stay non-significant after Holm with 5 seeds. If the true effects are near zero, their
+   95% t-interval half-widths shrink toward the values in `analysis/power_0.5B.md` for n = 5 (about 0.55 and
+   0.78 pp per ln k). Refuted by a Holm p < 0.05 for either contrast.
+2. **F2.** Vanilla's slope is still positive at 240 steps (no inversion). I think this is more likely than not,
+   not near-certain. Refuted by a vanilla slope whose bootstrap CI lies below zero at 240 steps.
+3. **F3.** Vanilla's slope declines from step 120 to step 240 (paired by seed). This is the prediction the
+   training-intensity reading needs: if the slope at 240 is not below the slope at 120, the paper must say the
+   intensity reading is unsupported by its own test.
+4. **F4.** MEG's between-seed standard deviation of the slope stays well above vanilla's (a ratio of at least 3).
+   Descriptive only; with 3-5 seeds it is not a test.
+
+**How outcomes will be worded.** F1-F4 are reported whether they hold or not. A refuted prediction is stated as
+refuted; none of the thresholds above will be changed after the data are seen. The interactions (S1, S2) are
+reported with their intervals and are not called null unless their 90% CI falls inside the +-1 bound.
+
 ## Changelog
 
 - 2026-10-03: written. Pilot values pending.
@@ -193,3 +228,6 @@ if so, both versions are reported.
   - The optional third-annotator adjudication was not carried out.
   - Also added after the main runs, descriptive and not pre-registered: scripts/mechanism.py (correct-solution
     mode counts per model and Spearman correlations across runs).
+- 2026-10-09 (night, before any extension run): added "Registered extension" (more seeds, 240-step runs with a
+  120/180/240 trajectory, power and equivalence reporting, predictions F1-F4). Code: `train.py --snapshot_steps`,
+  `analyze.py --eval_subdir/--sesoi`, `scripts/power.py`, `queues/extension_*.txt`. Nothing in it has been run.

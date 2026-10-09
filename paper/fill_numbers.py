@@ -314,6 +314,10 @@ def real(art: Path, gpu_hours=None, usd=None):
             # the same bootstrap interval as a change in the k=1 -> k=32 gain (slope x ln 32), in points
             g = [100 * x * math.log(KS[-1]) for x in e['boot_ci']]
             R[f'{bench}.{short}.g32'] = f'[{signed(g[0], 1)}, {signed(g[1], 1)}]'
+            R[f'{bench}.{short}.equiv'] = 'yes' if e.get('equivalent_to_zero') else 'no'
+            if 'sesoi' in e:
+                R['meta.sesoi'] = num(100 * e['sesoi'], 1)
+                R['meta.sesoi32'] = num(100 * e['sesoi'] * math.log(KS[-1]), 1)
         holm(R, bench, raw)
         if bench == 'math':  # between-seed spread of the slope (descriptive; n = 2-3 seeds)
             for key, cond in CONDS.items():
@@ -360,7 +364,8 @@ def real(art: Path, gpu_hours=None, usd=None):
         calib_keys(R, [(x['method'], x.get('meg_bigram_threshold', x.get('meg_tau_mode')), x['median_modes'],
                         x['frac_multi_mode']) for x in c['candidates']],
                    chosen=(ch['meg_partition'], round(ch.get('meg_bigram_threshold', ch.get('meg_tau_mode')), 2)))
-    done = [json.loads(p.read_text()) for p in runs.glob('*/0.5B/seed*/DONE.json')]
+    # tagged runs (e.g. vanilla__s240 from the registered extension) are not part of the main study's averages
+    done = [json.loads(p.read_text()) for p in runs.glob('*/0.5B/seed*/DONE.json') if '__' not in p.parts[-4]]
     if done:
         def mean_of(key):
             vals = [d[key] for d in done if d.get(key) is not None]
@@ -394,6 +399,21 @@ def real(art: Path, gpu_hours=None, usd=None):
     if entropy and steps:
         entropy = {k: v[:len(steps)] for k, v in entropy.items() if len(v) >= len(steps)}
         R['meta.entropy0'] = num(st.mean(v[0] for v in entropy.values()), 2)
+
+    # seed planning (scripts/power.py): what the observed between-seed spread lets 3 or 5 seeds detect
+    ppath = art / 'analysis' / 'power_0.5B.json'
+    if ppath.exists():
+        pw = json.loads(ppath.read_text())
+        for short, v in pw.items():
+            tag = short.split()[0]
+            R[f'pow.{tag}.sd'] = num(v['sd_pp_per_lnk'], 2)
+            for n in (3, 5):
+                if f'n{n}' in v:
+                    R[f'pow.{tag}.mde{n}'] = num(v[f'n{n}']['mde_pp_per_lnk'], 1)
+                    R[f'pow.{tag}.mde{n}pts'] = num(v[f'n{n}']['mde_pass32_points'], 1)
+                    R[f'pow.{tag}.hw{n}'] = num(v[f'n{n}']['half_width_pp_per_lnk'], 2)
+    else:
+        print(f'NOTE: {ppath} missing (run scripts/power.py); power numbers left as {MISSING}')
 
     # descriptive mechanism analysis (scripts/mechanism.py): correct-solution diversity at evaluation
     mpath = art / 'analysis' / 'mechanism_0.5B.json'

@@ -1,0 +1,92 @@
+{
+  "P1  heg_grpo - h_cb_grpo": {
+    "role": "primary",
+    "n_seeds_observed": 3,
+    "sd_pp_per_lnk": 0.4451881748645458,
+    "n3": {
+      "mde_pp_per_lnk": 1.378529700991086,
+      "mde_pass32_points": 4.7776198778005785,
+      "half_width_pp_per_lnk": 1.1059087340063187
+    },
+    "n5": {
+      "mde_pp_per_lnk": 0.7401147229864493,
+      "mde_pass32_points": 2.5650421676448114,
+      "half_width_pp_per_lnk": 0.5527741291553484
+    }
+  },
+  "P2  heg_grpo - meg": {
+    "role": "primary",
+    "n_seeds_observed": 3,
+    "sd_pp_per_lnk": 0.6314845938317571,
+    "n3": {
+      "mde_pp_per_lnk": 1.9553984527559307,
+      "mde_pass32_points": 6.776894621995264,
+      "half_width_pp_per_lnk": 1.5686946939268078
+    },
+    "n5": {
+      "mde_pp_per_lnk": 1.0498280763549146,
+      "mde_pass32_points": 3.6384268559904003,
+      "half_width_pp_per_lnk": 0.7840916855812196
+    }
+  },
+  "S1  CBxMEG interaction": {
+    "role": "secondary",
+    "n_seeds_observed": 2,
+    "sd_pp_per_lnk": 0.8883891104432496,
+    "n3": {
+      "mde_pp_per_lnk": 2.750905895368159,
+      "mde_pass32_points": 9.533913326800857,
+      "half_width_pp_per_lnk": 2.2068808919604055
+    },
+    "n5": {
+      "mde_pp_per_lnk": 1.4769257080557894,
+      "mde_pass32_points": 5.118634452176857,
+      "half_width_pp_per_lnk": 1.1030807748336509
+    }
+  },
+  "S2  CBxSELF interaction": {
+    "role": "secondary",
+    "n_seeds_observed": 2,
+    "sd_pp_per_lnk": 0.7101611229721024,
+    "n3": {
+      "mde_pp_per_lnk": 2.1990211236048505,
+      "mde_pass32_points": 7.621226459092325,
+      "half_width_pp_per_lnk": 1.7641380269939633
+    },
+    "n5": {
+      "mde_pp_per_lnk": 1.180625929617659,
+      "mde_pass32_points": 4.091737672052224,
+      "half_width_pp_per_lnk": 0.8817814993184157
+    }
+  },
+  "S3  CB main effect": {
+    "role": "secondary",
+    "n_seeds_observed": 2,
+    "sd_pp_per_lnk": 0.1452930653896737,
+    "n3": {
+      "mde_pp_per_lnk": 0.44990145133267806,
+      "mde_pass32_points": 1.5592396126053663,
+      "half_width_pp_per_lnk": 0.3609279829902951
+    },
+    "n5": {
+      "mde_pp_per_lnk": 0.24154625597467608,
+      "mde_pass32_points": 0.8371355315182878,
+      "half_width_pp_per_lnk": 0.18040516848302318
+    }
+  },
+  "E1  heg_grpo - vanilla": {
+    "role": "exploratory",
+    "n_seeds_observed": 3,
+    "sd_pp_per_lnk": 0.24643361442672376,
+    "n3": {
+      "mde_pp_per_lnk": 0.763084187744176,
+      "mde_pass32_points": 2.644648266323758,
+      "half_width_pp_per_lnk": 0.6121750350403647
+    },
+    "n5": {
+      "mde_pp_per_lnk": 0.409690006549429,
+      "mde_pass32_points": 1.4198773647166112,
+      "half_width_pp_per_lnk": 0.3059877469808906
+    }
+  }
+}

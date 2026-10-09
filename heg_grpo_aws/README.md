@@ -16,6 +16,7 @@ rlvr/                    config, rewards, data, clustering, gates, grpo_core, mo
 scripts/                 setup_instance.sh, start_jupyter.sh, run_queue.sh, prefetch.py, calibrate_meg.py,
                          human_eval.py (blinded annotation sheets + scoring; HUMAN_EVAL_GUIDE.md)
 queues/                  pilot.txt, main_0.5B.txt (2x3 factorial x 3 seeds), extras_0.5B.txt, main_1.5B.txt
+                         extension_seeds_0.5B.txt (to 5 seeds), extension_240_0.5B.txt (240 steps, trajectory); registered, not yet run
 tests/                   CPU tests; setup runs them automatically
 ```
 
@@ -316,3 +317,14 @@ python analyze.py --model_size 0.5B --benchmark gsm8k
 
 Unchanged from Kaggle: the CB-GRPO macro gate, group-relative advantages, PPO-clip objective,
 cosine schedule with 10% warmup, LoRA r=16/alpha=32 on all projection layers.
+
+## Extensions (registered in PREREGISTRATION.md, not yet run)
+
+| What | How | Cost |
+|---|---|---|
+| 5 seeds per cell at 120 steps | `bash scripts/run_queue.sh queues/extension_seeds_0.5B.txt --benchmarks math500 --train-args "--steps 120 --lr 1e-5"` | ~75 GPU-h |
+| 240 steps, Pass@k at steps 120/180/240 | `bash scripts/run_queue.sh queues/extension_240_0.5B.txt --benchmarks math500 --train-args "--lr 1e-5"` | ~150 GPU-h |
+
+After the runs: `python analyze.py --benchmark math500` (the final model), `python analyze.py --eval_subdir eval_step120`
+and `--eval_subdir eval_step180` for the trajectory, then `python scripts/power.py` and `python scripts/mechanism.py`.
+`analyze.py` also reports whether each contrast's 90% bootstrap CI lies inside +-`--sesoi` (default 1 pp per ln k).

@@ -608,3 +608,18 @@ Full report: `claude science/novelty_verification_2026-10-03.md`. Summary:
   (vanilla 0.04 vs MEG 0.40), training-intensity reading and the partition-as-weak-link discussion. Not adopted:
   the claim that the H1 bar was "not met" (balanced accuracy is 77%, reported with its caveat), an unverified EDAS
   statistic, and treating the intensity reading as confirmed (one intensity level was run).
+- 2026-10-09 (night): humanizing pass on the user's Overleaf edit of main.tex; full-width Fig. 1 (training step);
+  6 pages. Corrected errors in that edit: steps 240 -> \R{meta.steps} (120, cut from a planned 240, not 240 from 580),
+  reproducibility statement restored (pre-registration first committed after the runs, 4cdc43a), AI disclosure made
+  accurate. Added main_blind.tex (double-blind build: no authors, acknowledgment, annotator names, commit hash or repo link).
+- 2026-10-09 (night): **reviewer-style feedback acted on, honestly.** Asked to predict 5-seed and 240-step results into the
+  paper; declined, because predicted results are not results. Instead:
+  - Done now with real data: equivalence reporting (`analyze.py --sesoi`; P1 and P2 are inside +-1 pp/ln k at 90%, S1 and S2
+    are not) and a seed-planning table (`scripts/power.py`: with the observed between-seed sd, 3 seeds detect ~1.4 (P1) and
+    ~2.0 (P2) pp/ln k, 5 seeds ~0.7 and ~1.0). Both are in the paper (R19).
+  - Built for the future: `train.py --snapshot_steps` (adapter snapshots evaluated after training, `eval_step<N>/`),
+    `analyze.py --eval_subdir`, `queues/extension_seeds_0.5B.txt` (14 runs, ~$76) and `queues/extension_240_0.5B.txt`
+    (12 runs, ~$150). Not run. A trajectory over 120/180/240 steps cannot be shown until those runs exist.
+  - Predictions F1-F4 written into PREREGISTRATION.md before any extension run, with refutation criteria.
+  - Environment note: the old scratchpad venv was hollowed out (pandas, dill, matplotlib directories without files);
+    tests now run in a fresh venv (math-verify, pymupdf). 55 tests pass.

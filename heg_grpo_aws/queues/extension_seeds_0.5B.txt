@@ -1,0 +1,20 @@
+# EXTENSION A (registered 2026-10-09, before any of these runs): bring every cell of the 2x3 factorial to
+# 5 seeds at the same 120 steps as the main study. 14 runs: seed 2 for SELF and CB (they only have 2 seeds),
+# seeds 3 and 4 for all six conditions. Seed-major, so stopping early still leaves complete seeds.
+# Run:  run_queue.sh queues/extension_seeds_0.5B.txt --benchmarks math500 --train-args "--steps 120 --lr 1e-5"
+# Cost: about 5.4 h per run on one g5.xlarge (~$5.4), 14 runs = ~75 GPU-hours (~$76); half that in wall-clock
+# on two instances (split the file by seed). analyze.py/power.py pick the new seeds up automatically.
+train o_self 2 0.5B
+train cb_grpo 2 0.5B
+train vanilla 3 0.5B
+train heg_grpo 3 0.5B
+train h_cb_grpo 3 0.5B
+train meg 3 0.5B
+train cb_grpo 3 0.5B
+train o_self 3 0.5B
+train vanilla 4 0.5B
+train heg_grpo 4 0.5B
+train h_cb_grpo 4 0.5B
+train meg 4 0.5B
+train cb_grpo 4 0.5B
+train o_self 4 0.5B

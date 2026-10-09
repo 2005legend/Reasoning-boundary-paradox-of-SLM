@@ -496,3 +496,28 @@ def test_generation_copy_matches_lora_and_leaves_model_untouched():
     assert torch.equal(after, lora)                    # the training model is unchanged
     with generation_copy(model, enabled=False) as same:
         assert same is model
+
+
+def test_snapshot_steps_parsing():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('train_mod', Path(__file__).resolve().parents[1] / 'train.py')
+    src = Path(spec.origin).read_text()
+    ns = {}
+    start = src.index('def parse_snapshot_steps')
+    exec(src[start:src.index('def resolve_partition')], ns)  # noqa: S102 (the function under test only)
+    parse = ns['parse_snapshot_steps']
+    assert parse('', 240) == [] and parse('180,120,120', 240) == [120, 180]
+    for bad in ('0', '240', '300', '-5'):
+        with pytest.raises(SystemExit):
+            parse(bad, 240)
+
+
+def test_power_planning_formulas():
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
+    from power import half_width, mde
+    # n=3: t(0.975,2)=4.303, t(0.8,2)=1.061 -> (4.303+1.061)*sd/sqrt(3)
+    assert abs(mde(1.0, 3) - (4.3027 + 1.0607) / 3 ** 0.5) < 1e-3
+    assert abs(half_width(1.0, 3) - 4.3027 / 3 ** 0.5) < 1e-3
+    assert mde(1.0, 5) < mde(1.0, 3) and half_width(1.0, 5) < half_width(1.0, 3)  # more seeds, finer detection
+    assert abs(mde(2.0, 4) - 2 * mde(1.0, 4)) < 1e-9                              # linear in the spread

@@ -1,0 +1,23 @@
+# EXTENSION B (registered 2026-10-09, before any of these runs): does the conclusion survive longer training,
+# and how does the shrinkage slope move over training? 240 steps (about 4 rollouts per training problem), scored
+# at steps 120, 180 and 240 with the same MATH-500 evaluation. Conditions: the four that enter P1/P2 (vanilla,
+# CB x SELF, MEG, CB x MEG), seeds 0-2 = 12 runs.
+# Run:  run_queue.sh queues/extension_240_0.5B.txt --benchmarks math500 --train-args "--lr 1e-5"
+# Each line sets --steps 240, a tag (run directory <gate>__s240) and --snapshot_steps; the later flags override
+# the global ones. analyze.py --eval_subdir eval_step120 | eval_step180 | eval  gives the three time points.
+# Note: the step-120 snapshot of a 240-step cosine schedule is NOT the finished 120-step run (the learning rate
+# is still high there), so compare time points within these runs, not against the main-study 120-step runs.
+# Cost: per run about 6 h of training (6.5 h for SELF) plus 3 x 2.1 h of evaluation = ~12.5 h; 12 runs = ~150
+# GPU-hours (~$150). Drop the CB x SELF lines to save a quarter.
+train vanilla 0 0.5B --steps 240 --tag s240 --snapshot_steps 120,180
+train heg_grpo 0 0.5B --steps 240 --tag s240 --snapshot_steps 120,180
+train h_cb_grpo 0 0.5B --steps 240 --tag s240 --snapshot_steps 120,180
+train meg 0 0.5B --steps 240 --tag s240 --snapshot_steps 120,180
+train vanilla 1 0.5B --steps 240 --tag s240 --snapshot_steps 120,180
+train heg_grpo 1 0.5B --steps 240 --tag s240 --snapshot_steps 120,180
+train h_cb_grpo 1 0.5B --steps 240 --tag s240 --snapshot_steps 120,180
+train meg 1 0.5B --steps 240 --tag s240 --snapshot_steps 120,180
+train vanilla 2 0.5B --steps 240 --tag s240 --snapshot_steps 120,180
+train heg_grpo 2 0.5B --steps 240 --tag s240 --snapshot_steps 120,180
+train h_cb_grpo 2 0.5B --steps 240 --tag s240 --snapshot_steps 120,180
+train meg 2 0.5B --steps 240 --tag s240 --snapshot_steps 120,180
