@@ -1,7 +1,8 @@
 # Human evaluation: annotator guide
 
-You will label two spreadsheets: `h1_pairs.csv` (60 rows) and `h2_solutions.csv` (80 rows).
-Expect about 4–5 hours; take breaks.
+You will label two spreadsheets: `h1_pairs.csv` (60 rows) and `h2_solutions.csv` (up to 80 rows: one row per
+lost problem plus one matched retained problem for each; the sheets used in our study had 40 rows, because only 20
+problems were lost). Expect about 2–3 hours for the 100 rows of our study (4–5 hours for the full 140); take breaks.
 
 **Rules**
 - Work alone. Don't discuss items with the other annotator until you have both finished.
