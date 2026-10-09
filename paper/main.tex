@@ -161,7 +161,6 @@ seed-paired primary contrasts and Holm correction.
 instead of shrinking it, that neither level of fix nor their composite moves the shrinkage slope by more than about
 one point per unit $\ln k$, and that correct-solution diversity does not track coverage across runs.}
 \end{itemize}
-Code, logs, the pre-registration and the annotation protocol are released at \TODO{repository URL}.
 
 % =====================================================================================================
 \section{Related Work}
@@ -406,8 +405,9 @@ count. For one random correct base-model solution per problem, annotators judge 
 pre-registered reading is ``mostly lucky hits'' if the exited rate is below 50\% and significantly below the
 retained rate, ``genuine loss'' if it is at least 50\% and not significantly lower, ``mixed'' otherwise.
 
-\textbf{Reproducibility.} The pre-registration (committed \TODO{date + commit hash} before any main run), configs,
-logs, correctness matrices and the script that generates every number here are released at \TODO{repository URL}.
+\textbf{Reproducibility.} Code, logs, annotation sheets and the script behind every number are at
+\url{github.com/2005legend/Reasoning-boundary-paradox-of-SLM}. The pre-registration (written 2026-10-03, changed
+only by dated entries) was first committed after the runs (\texttt{4cdc43a}), so its dates are self-reported.
 
 % =====================================================================================================
 \section{Results}
@@ -580,11 +580,9 @@ were valid: A rated \R{human.h2.A.valid} of \R{human.h2.items} solutions valid a
 ($\kappa=\R{human.h2.kappa}$, agreement on \R{human.h2.consensus} items). On those items, \R{human.h2.exited.rate}\%
 of exited solutions were valid (CI \R{human.h2.exited.ci}, $n=\R{human.h2.exited.n}$) against
 \R{human.h2.retained.rate}\% of retained ones (CI \R{human.h2.retained.ci}, $n=\R{human.h2.retained.n}$; Fisher
-$p=\R{human.h2.p}$). Read literally, the pre-registered rule gives a genuine loss, but a small subset selected by
-agreement at chance-level reliability cannot carry that. Each annotator alone also rated exited solutions valid
-more often (A: \R{human.h2.A.exited} vs.\ \R{human.h2.A.retained}, $p=\R{human.h2.A.p}$; B: \R{human.h2.B.exited} vs.\
-\R{human.h2.B.retained}, $p=\R{human.h2.B.p}$), without significance.} The audit gives no support for the lucky-hit
-reading and does not establish the opposite; we report H2 as inconclusive.
+$p=\R{human.h2.p}$). The literal pre-registered rule reads this as a genuine loss, but a subset selected by agreement
+at chance-level reliability cannot carry that; each annotator alone shows the same direction without significance
+(A: $p=\R{human.h2.A.p}$; B: $p=\R{human.h2.B.p}$).} We report H2 as inconclusive.
 
 % =====================================================================================================
 \section{Discussion and Limitations}
