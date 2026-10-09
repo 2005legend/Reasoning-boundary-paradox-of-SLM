@@ -1,7 +1,0 @@
-contrast,lo_slope,hi_slope,lo_pass32_pp,hi_pass32_pp,max_abs_pp
-P1 (CB×MEG − CB×SELF),-0.79,0.68,-2.74,2.36,2.74
-P2 (CB×MEG − MEG),-0.6,1.05,-2.08,3.64,3.64
-S1 (CB×MEG interaction),-0.94,1.69,-3.26,5.86,5.86
-S2 (CB×SELF interaction),-0.71,1.68,-2.46,5.82,5.82
-S3 (CB main effect),-0.59,0.25,-2.04,0.87,2.04
-E1 (CB×MEG − Vanilla),-0.91,0.3,-3.15,1.04,3.15
