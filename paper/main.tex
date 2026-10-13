@@ -138,8 +138,8 @@ reasoning~\cite{tasalti2026cotaudit}, and approach-level diversity has been scor
 human-labelled pairs~\cite{lee2026strategy}. As far as we know, no study has asked people what RLVR loses: whether
 the solutions that disappear are distinct strategies, and whether lost problems were ever solved by valid reasoning.
 
-A third gap concerns the fixes. \emph{Intra-group} methods give rare correct modes of one prompt more credit than
-common ones~\cite{cao2026cuegrpo,park2026reco,chen2026gcpo,chen2025dragrpo,liu2026edas,cao2026treeadv}, and
+A third gap concerns the fixes. \emph{Intra-group} methods reshape credit using the diversity or structure of one prompt's
+rollouts, for example by giving rare correct modes more credit than common ones~\cite{cao2026cuegrpo,park2026reco,chen2026gcpo,chen2025dragrpo,liu2026edas,cao2026treeadv}, and
 \emph{cross-prompt} methods reweight whole problems or
 tasks~\cite{sun2026curverl,yuan2026overtraining,ramesh2026mtgrpo,nguyen2025paradox}. The two act on different axes
 but have not been tested together (ReCo combines two corrections, both within one prompt~\cite{park2026reco}). One
@@ -162,20 +162,21 @@ on are mostly wording.}
 % =====================================================================================================
 \textbf{Is shrinkage real?} Yue et al.~\cite{yue2025rl} showed that base models overtake RLVR-trained ones at large
 $k$. Nguyen et al.~\cite{nguyen2025paradox} attribute this to negative interference and winner-take-all
-reinforcement and propose SELF, which trains only on problems whose greedy answer is wrong. Wu and
-Xuan~\cite{wu2025leash} argue that RLVR cannot leave the base model's support, Zhou and Li~\cite{zhou2026entrance}
+reinforcement and propose SELF, which trains only on problems whose greedy answer is wrong. Wu et
+al.~\cite{wu2025leash} argue that RLVR stays largely confined to the base model's support, Zhou and Li~\cite{zhou2026entrance}
 place the contraction at the first decision of a solution, and Zhou~\cite{zhou2026inversion} diagnoses the
 inversion. Against this, ProRL~\cite{liu2025prorl} reports expansion after prolonged, KL-controlled training, Wen et
 al.~\cite{wen2025implicit} report expansion under CoT-Pass@$k$, and Yao et al.~\cite{yao2025debate} describe an
 exploitation stage that shrinks the boundary followed by an exploration stage that expands it. Yuan et
-al.~\cite{yuan2026overtraining} tie the decline to rollouts per problem and gate problems by success count (BBG),
-and Dragoi et al.~\cite{dragoi2025breadth} show that Pass@$k$ favours lucky hits. Other work changes the optimizer
-or the search~\cite{ba2026es,yu2026datpo,decugis2026fade}. At SLM scale, GRPO dynamics~\cite{ghosh2026dynamics},
+al.~\cite{yuan2026overtraining} tie the decline to few rollouts per problem and gate problems by their estimated contribution to the
+boundary (BBG),
+and Dragoi et al.~\cite{dragoi2025breadth} show that Pass@$k$ favours lucky hits. Other work changes the optimizer, the
+rollout search or the advantage function~\cite{ba2026es,yu2026datpo,decugis2026fade}. At SLM scale, GRPO dynamics~\cite{ghosh2026dynamics},
 difficulty scaling~\cite{yadav2026difficulty} and reward granularity~\cite{palandye2026granularity} have been
 studied, but not shrinkage.
 
 \textbf{Measuring what is lost.} Lee et al.~\cite{lee2026strategy} find that embedding similarity tracks phrasing
-more than strategy and word-bigram overlap tracks approach better, and that 0.7\% of GSM8K problems but 33\% of MATH
+more than strategy and word-bigram overlap tracks approach better, and that 0.7\% of GSM8K problems but 33\% of MATH training
 problems admit more than one approach. Yang et al.~\cite{yang2026strategy} code the strategies of frontier models
 with AI coders and human adjudication, without RL. Ta\c{s}alt{\i} et al.~\cite{tasalti2026cotaudit} find that
 CoT-Pass@$k$ judges accept corrupted chains, and that Pass@$k$ exceeds CoT-Pass@$k$ by 19.7 points on
@@ -188,8 +189,8 @@ GCPO~\cite{chen2026gcpo}, DRA-GRPO~\cite{chen2025dragrpo}, EDAS~\cite{liu2026eda
 reshape advantages using diversity or structure within the group.
 
 \textbf{Cross-prompt reweighting.} MT-GRPO~\cite{ramesh2026mtgrpo} reweights explicit tasks for worst-task
-reliability, CurveRL~\cite{sun2026curverl} reweights prompts by pass-rate distribution, BBG gates problems by success
-count~\cite{yuan2026overtraining}, and SELF selects by greedy failure~\cite{nguyen2025paradox}. CB works at the level
+reliability, CurveRL~\cite{sun2026curverl} reweights prompts by pass-rate distribution, BBG gates problems by their estimated
+contribution to the boundary~\cite{yuan2026overtraining}, and SELF selects by greedy failure~\cite{nguyen2025paradox}. CB works at the level
 of topics, uses each topic's share of positive advantage as its signal, and keeps state across steps. We ask whether
 a topic-level and an intra-group intervention compose, not which gate is best.
 
@@ -347,7 +348,8 @@ Hardware & NVIDIA A10G 24\,GB (AWS g5.xlarge), one run per GPU \\
 
 \textbf{Evaluation and outcome.} Every model, including the base model, answers all of
 MATH-500~\cite{lightman2023verify} 32 times per problem. Pass@$k$ for $k\in\{1,2,4,8,16,32\}$ uses the unbiased
-estimator~\cite{chen2021codex}. MATH-500 shares no problem statement with the training split. The pre-registered
+estimator~\cite{chen2021codex}. No MATH-500 problem appears verbatim in the training split; 4 of
+the 500 have a near-duplicate there (over 80\% shared word 8-grams). The pre-registered
 primary outcome is the \emph{shrinkage slope}, the least-squares slope of
 $\Delta(k)=\text{Pass@}k(\text{run})-\text{Pass@}k(\text{base})$ against $\ln k$ in percentage points per unit
 $\ln k$; a negative slope means gains at small $k$ turn into losses at large $k$. We also count boundary
@@ -495,12 +497,13 @@ contrasts as a bounded null, as pre-registered. The gates also made runs less re
 Mode entropy of the correct rollouts starts at \R{meta.entropy0} and \RT{R7}{does not decay under vanilla GRPO}
 (Fig.~\ref{fig:curves}, right). At evaluation, vanilla's correct answers to a problem fall into
 \R{mech.vanilla.modes} modes on average, against \R{mech.base.modes} for the base model, and its largest mode holds
-\R{mech.vanilla.top}\% of them against \R{mech.base.top}\%. There is no collapse for MEG to undo. \cond{SELF} skips
-the \R{meta.selrate}\% of prompts it already solves, for a mean positive weight of \R{math.self.posw}. Changes are
-uneven across subjects (Fig.~\ref{fig:subjects}): under vanilla GRPO, Pass@32 rises by \R{subj.cp.vanilla}~pp in
+\R{mech.vanilla.top}\% of them against \R{mech.base.top}\%. There is no collapse for MEG to undo. \cond{SELF} trains on
+the \R{meta.selrate}\% of prompts whose greedy answer is wrong and skips the rest, for a mean positive weight of
+\R{math.self.posw}. Changes are
+uneven across subjects (Fig.~\ref{fig:subjects}): under vanilla GRPO, Pass@32 changes by \R{subj.cp.vanilla}~pp in
 Counting \& Probability and by \R{subj.geo.vanilla}~pp in Geometry. \RT{R8}{The macro gate binds but changes
 nothing. In the CB runs a subject's share of positive credit does not predict its Pass@32 change (Spearman
-$\rho=\R{mech.topic.rho}$, $n=\R{mech.topic.n}$ subject-runs), which leaves the premise of a topic budget
+$\rho=\R{mech.topic.rho}$, $n=\R{mech.topic.n}$ subject-runs, pooled and so not independent), which leaves the premise of a topic budget
 unsupported.}
 
 \begin{figure}[t]
@@ -555,7 +558,7 @@ $p=\R{human.h2.B.p}$).} We report H2 as inconclusive.
 \section{Discussion and Limitations}
 % =====================================================================================================
 \RT{R13}{\textbf{Training intensity, not size.} With about two rollouts per training problem and a policy that moved
-little (final KL to the base model about ten times its bf16 noise floor), RLVR on a 0.5B model expands the boundary
+little (final KL to the base model 3--14 times its bf16 noise floor of about $2\times10^{-4}$), RLVR on a 0.5B model expands the boundary
 slightly. Accounts that tie shrinkage to repeated reinforcement of saturated problems~\cite{yuan2026overtraining} or
 to a long exploitation phase~\cite{yao2025debate} predict exactly this, and the reported
 inversions~\cite{yue2025rl,nguyen2025paradox} come from far longer training. We read our null as a statement about
@@ -564,9 +567,9 @@ at 0.5B and shrinkage should appear. We have registered that test: five seeds pe
 steps 120, 180 and 240. Our prediction, made before running it, is that vanilla's slope declines over those steps;
 if it does not, the intensity reading fails.} \textbf{The partition is the weak link.} Embedding partitions put nearly every
 group in one mode (Table~\ref{tab:calib}), and the bigram partition finds about three modes that people see as one
-approach. Neither tracks what intra-group methods assume it tracks, which matters for any method that reweights over
-such partitions~\cite{cao2026cuegrpo,park2026reco,chen2026gcpo,chen2025dragrpo,liu2026edas}. This fits Lee et al.'s
-finding that a third of MATH problems admit more than one approach~\cite{lee2026strategy}: the alternatives exist in
+approach. Neither tracks what intra-group methods assume it tracks, which matters for any method that reweights credit by the
+diversity of correct rollouts within a group~\cite{cao2026cuegrpo,chen2026gcpo,chen2025dragrpo}. This fits Lee et al.'s
+finding that a third of MATH training problems admit more than one approach~\cite{lee2026strategy}: the alternatives exist in
 the dataset but rarely appear in what a 0.5B model samples. We do not claim that shrinkage is absent at larger
 budgets; the bounds in Table~\ref{tab:contrasts} are what a longer study would need to beat.
 
@@ -589,8 +592,8 @@ partitioner's modes to be wording variants of one approach. The protocol runs on
 \ifblind\else
 \section*{Acknowledgment}
 We thank the two annotators. This work used AWS credits awarded to our team for placing among the top 500 teams in
-the Amazon ML Challenge 2026; early experiments ran on a local NVIDIA RTX 3060 (12\,GB). AWS compute:
-\R{meta.gpuh} A10G GPU-hours, about \$\R{meta.usd}. An AI assistant (Claude, Anthropic) was used to write analysis
+the Amazon ML Challenge 2026; early experiments ran on a local NVIDIA RTX 3060 (12\,GB). AWS compute for
+the main study: \R{meta.gpuh} A10G GPU-hours, about \$\R{meta.usd}. An AI assistant (Claude, Anthropic) was used to write analysis
 code and to draft and edit parts of the text; the authors checked the results against the logs and take
 responsibility for the content.
 \fi

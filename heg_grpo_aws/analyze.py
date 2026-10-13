@@ -57,10 +57,14 @@ def slopes_from_rows(run_rows: np.ndarray, base_rows: np.ndarray, log_k: np.ndar
     return float((lk * (delta - delta.mean())).sum() / (lk ** 2).sum())
 
 
-def subject_labels(benchmark: str, prompt_ids):
-    """MATH-500 subject of each evaluated problem ('math500_<row>'), for the per-topic breakdown."""
+def subject_labels(benchmark: str, prompt_ids, cache=None):
+    """MATH-500 subject of each evaluated problem ('math500_<row>'), for the per-topic breakdown.
+    `cache` is a JSON list of the 500 subjects in dataset order, used when the dataset cannot be loaded."""
     if benchmark != 'math500':
         return None
+    if cache is not None and Path(cache).exists():
+        rows = json.loads(Path(cache).read_text(encoding='utf-8'))
+        return np.array([rows[int(str(pid).rsplit('_', 1)[1])] for pid in prompt_ids])
     try:
         from datasets import load_dataset
         rows = load_dataset('HuggingFaceH4/MATH-500', split='test')
@@ -155,7 +159,7 @@ def main():
                                        'pos_weight': info[cond]['pos_w'], 'mode_entropy': info[cond]['entropy'],
                                        'rollouts_per_problem': info[cond]['rollouts_per_problem']}
 
-    subj = subject_labels(args.benchmark, base_ids)
+    subj = subject_labels(args.benchmark, base_ids, Path(args.artifact_root) / 'analysis' / 'math500_subjects.json')
     if subj is not None:  # does shrinkage concentrate in some topics? (the macro gate acts on topics)
         names = sorted(set(subj.tolist()))
         ends = {1: ks.index(1), ks[-1]: len(ks) - 1}
