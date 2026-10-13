@@ -231,3 +231,9 @@ reported with their intervals and are not called null unless their 90% CI falls 
 - 2026-10-09 (night, before any extension run): added "Registered extension" (more seeds, 240-step runs with a
   120/180/240 trajectory, power and equivalence reporting, predictions F1-F4). Code: `train.py --snapshot_steps`,
   `analyze.py --eval_subdir/--sesoi`, `scripts/power.py`, `queues/extension_*.txt`. Nothing in it has been run.
+- 2026-10-13 (before any extension run): Extension A reduced from 14 to 11 runs because the remaining AWS credit
+  (about $93 of $200) does not cover all of them. Order of priority: seed 2 for SELF and CB (2 runs), seed 3 for all six
+  conditions (6 runs), seed 4 for heg_grpo, h_cb_grpo and meg only (3 runs; these decide P1 and P2). Result: 4 seeds
+  for every condition, 5 for the three conditions in P1 and P2. Same code and hyperparameters as the main runs
+  (`train.py` on the instances is the main-study version; `--snapshot_steps` is not used). Experiments B (240 steps)
+  and C (1.5B) are not run. Queues: `queues/extension_seeds_0.5B_1.txt`, `_2.txt`.

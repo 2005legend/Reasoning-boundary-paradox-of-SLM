@@ -1,0 +1,7 @@
+# Extension A (reduced to 11 runs by budget; see PREREGISTRATION.md changelog 2026-10-13). Instance 1.
+train o_self 2 0.5B
+train vanilla 3 0.5B
+train h_cb_grpo 3 0.5B
+train cb_grpo 3 0.5B
+train heg_grpo 4 0.5B
+train meg 4 0.5B
