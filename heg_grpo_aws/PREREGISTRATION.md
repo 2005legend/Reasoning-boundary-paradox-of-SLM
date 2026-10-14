@@ -250,3 +250,9 @@ reported with their intervals and are not called null unless their 90% CI falls 
   The paper now states both, states that one gradient step per batch makes the PPO clip inactive, gives the CB
   initialisation and clip/normalise order, the partitioner's linkage and embedding checkpoint, how 4- and 5-seed
   cells are paired, and words the training-intensity explanation as an untested hypothesis.
+- 2026-10-15: the pre-registered third annotator adjudicated the 25 H2 items on which A and B disagreed, blind to
+  their labels (sheet: `results_0.5B/human_eval/annotator_C_adjudication/`, labels:
+  `results_0.5B/human_eval/labelled/adjudication_h2.csv`). The third annotator sided with A on 22 of 25. By
+  majority over all 40 items: exited 7/20 valid vs retained 5/20, Fisher p = 0.73. Under the interpretation rule
+  this is "mixed" (exited rate below 50% but not below the retained rate). Both versions are reported, as
+  registered (two-annotator consensus on 15 items: 5/6 vs 2/9, p = 0.041).

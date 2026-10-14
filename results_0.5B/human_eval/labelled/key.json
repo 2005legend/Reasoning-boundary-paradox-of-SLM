@@ -1,0 +1,931 @@
+{
+  "h1": {
+    "P001": {
+      "partitioner": "different",
+      "prompt_id": 3972,
+      "rollouts": [
+        5,
+        2
+      ]
+    },
+    "P002": {
+      "partitioner": "different",
+      "prompt_id": 6024,
+      "rollouts": [
+        1,
+        3
+      ]
+    },
+    "P003": {
+      "partitioner": "same",
+      "prompt_id": 1904,
+      "rollouts": [
+        2,
+        3
+      ]
+    },
+    "P004": {
+      "partitioner": "same",
+      "prompt_id": 3434,
+      "rollouts": [
+        7,
+        5
+      ]
+    },
+    "P005": {
+      "partitioner": "different",
+      "prompt_id": 4115,
+      "rollouts": [
+        7,
+        0
+      ]
+    },
+    "P006": {
+      "partitioner": "different",
+      "prompt_id": 5999,
+      "rollouts": [
+        7,
+        1
+      ]
+    },
+    "P007": {
+      "partitioner": "different",
+      "prompt_id": 4321,
+      "rollouts": [
+        6,
+        7
+      ]
+    },
+    "P008": {
+      "partitioner": "different",
+      "prompt_id": 61,
+      "rollouts": [
+        3,
+        2
+      ]
+    },
+    "P009": {
+      "partitioner": "same",
+      "prompt_id": 6415,
+      "rollouts": [
+        7,
+        1
+      ]
+    },
+    "P010": {
+      "partitioner": "different",
+      "prompt_id": 6936,
+      "rollouts": [
+        4,
+        2
+      ]
+    },
+    "P011": {
+      "partitioner": "different",
+      "prompt_id": 5031,
+      "rollouts": [
+        4,
+        3
+      ]
+    },
+    "P012": {
+      "partitioner": "same",
+      "prompt_id": 597,
+      "rollouts": [
+        0,
+        3
+      ]
+    },
+    "P013": {
+      "partitioner": "same",
+      "prompt_id": 1977,
+      "rollouts": [
+        1,
+        0
+      ]
+    },
+    "P014": {
+      "partitioner": "same",
+      "prompt_id": 1298,
+      "rollouts": [
+        2,
+        1
+      ]
+    },
+    "P015": {
+      "partitioner": "same",
+      "prompt_id": 5111,
+      "rollouts": [
+        1,
+        3
+      ]
+    },
+    "P016": {
+      "partitioner": "different",
+      "prompt_id": 5031,
+      "rollouts": [
+        1,
+        7
+      ]
+    },
+    "P017": {
+      "partitioner": "same",
+      "prompt_id": 7311,
+      "rollouts": [
+        4,
+        5
+      ]
+    },
+    "P018": {
+      "partitioner": "same",
+      "prompt_id": 1996,
+      "rollouts": [
+        0,
+        2
+      ]
+    },
+    "P019": {
+      "partitioner": "same",
+      "prompt_id": 924,
+      "rollouts": [
+        4,
+        6
+      ]
+    },
+    "P020": {
+      "partitioner": "different",
+      "prompt_id": 4115,
+      "rollouts": [
+        0,
+        1
+      ]
+    },
+    "P021": {
+      "partitioner": "different",
+      "prompt_id": 6531,
+      "rollouts": [
+        5,
+        3
+      ]
+    },
+    "P022": {
+      "partitioner": "different",
+      "prompt_id": 7311,
+      "rollouts": [
+        0,
+        3
+      ]
+    },
+    "P023": {
+      "partitioner": "same",
+      "prompt_id": 6365,
+      "rollouts": [
+        5,
+        4
+      ]
+    },
+    "P024": {
+      "partitioner": "same",
+      "prompt_id": 5351,
+      "rollouts": [
+        6,
+        3
+      ]
+    },
+    "P025": {
+      "partitioner": "same",
+      "prompt_id": 4031,
+      "rollouts": [
+        1,
+        7
+      ]
+    },
+    "P026": {
+      "partitioner": "different",
+      "prompt_id": 39,
+      "rollouts": [
+        3,
+        6
+      ]
+    },
+    "P027": {
+      "partitioner": "same",
+      "prompt_id": 20,
+      "rollouts": [
+        4,
+        7
+      ]
+    },
+    "P028": {
+      "partitioner": "different",
+      "prompt_id": 4031,
+      "rollouts": [
+        0,
+        1
+      ]
+    },
+    "P029": {
+      "partitioner": "same",
+      "prompt_id": 2803,
+      "rollouts": [
+        1,
+        4
+      ]
+    },
+    "P030": {
+      "partitioner": "same",
+      "prompt_id": 303,
+      "rollouts": [
+        4,
+        2
+      ]
+    },
+    "P031": {
+      "partitioner": "same",
+      "prompt_id": 5999,
+      "rollouts": [
+        1,
+        3
+      ]
+    },
+    "P032": {
+      "partitioner": "different",
+      "prompt_id": 663,
+      "rollouts": [
+        4,
+        3
+      ]
+    },
+    "P033": {
+      "partitioner": "different",
+      "prompt_id": 6267,
+      "rollouts": [
+        0,
+        5
+      ]
+    },
+    "P034": {
+      "partitioner": "same",
+      "prompt_id": 61,
+      "rollouts": [
+        0,
+        2
+      ]
+    },
+    "P035": {
+      "partitioner": "same",
+      "prompt_id": 3434,
+      "rollouts": [
+        3,
+        0
+      ]
+    },
+    "P036": {
+      "partitioner": "same",
+      "prompt_id": 6053,
+      "rollouts": [
+        6,
+        7
+      ]
+    },
+    "P037": {
+      "partitioner": "different",
+      "prompt_id": 2858,
+      "rollouts": [
+        2,
+        3
+      ]
+    },
+    "P038": {
+      "partitioner": "same",
+      "prompt_id": 61,
+      "rollouts": [
+        2,
+        7
+      ]
+    },
+    "P039": {
+      "partitioner": "different",
+      "prompt_id": 5135,
+      "rollouts": [
+        1,
+        6
+      ]
+    },
+    "P040": {
+      "partitioner": "same",
+      "prompt_id": 663,
+      "rollouts": [
+        0,
+        4
+      ]
+    },
+    "P041": {
+      "partitioner": "same",
+      "prompt_id": 1904,
+      "rollouts": [
+        7,
+        3
+      ]
+    },
+    "P042": {
+      "partitioner": "different",
+      "prompt_id": 303,
+      "rollouts": [
+        0,
+        2
+      ]
+    },
+    "P043": {
+      "partitioner": "same",
+      "prompt_id": 6293,
+      "rollouts": [
+        0,
+        7
+      ]
+    },
+    "P044": {
+      "partitioner": "different",
+      "prompt_id": 597,
+      "rollouts": [
+        2,
+        5
+      ]
+    },
+    "P045": {
+      "partitioner": "same",
+      "prompt_id": 3913,
+      "rollouts": [
+        6,
+        2
+      ]
+    },
+    "P046": {
+      "partitioner": "different",
+      "prompt_id": 6053,
+      "rollouts": [
+        7,
+        3
+      ]
+    },
+    "P047": {
+      "partitioner": "different",
+      "prompt_id": 2902,
+      "rollouts": [
+        6,
+        7
+      ]
+    },
+    "P048": {
+      "partitioner": "different",
+      "prompt_id": 4992,
+      "rollouts": [
+        4,
+        1
+      ]
+    },
+    "P049": {
+      "partitioner": "same",
+      "prompt_id": 3972,
+      "rollouts": [
+        0,
+        4
+      ]
+    },
+    "P050": {
+      "partitioner": "same",
+      "prompt_id": 2278,
+      "rollouts": [
+        7,
+        1
+      ]
+    },
+    "P051": {
+      "partitioner": "same",
+      "prompt_id": 4670,
+      "rollouts": [
+        4,
+        1
+      ]
+    },
+    "P052": {
+      "partitioner": "different",
+      "prompt_id": 5135,
+      "rollouts": [
+        6,
+        4
+      ]
+    },
+    "P053": {
+      "partitioner": "same",
+      "prompt_id": 663,
+      "rollouts": [
+        4,
+        1
+      ]
+    },
+    "P054": {
+      "partitioner": "different",
+      "prompt_id": 6982,
+      "rollouts": [
+        4,
+        7
+      ]
+    },
+    "P055": {
+      "partitioner": "different",
+      "prompt_id": 4031,
+      "rollouts": [
+        0,
+        7
+      ]
+    },
+    "P056": {
+      "partitioner": "different",
+      "prompt_id": 2858,
+      "rollouts": [
+        6,
+        5
+      ]
+    },
+    "P057": {
+      "partitioner": "different",
+      "prompt_id": 6365,
+      "rollouts": [
+        4,
+        3
+      ]
+    },
+    "P058": {
+      "partitioner": "different",
+      "prompt_id": 5371,
+      "rollouts": [
+        3,
+        1
+      ]
+    },
+    "P059": {
+      "partitioner": "same",
+      "prompt_id": 2228,
+      "rollouts": [
+        3,
+        7
+      ]
+    },
+    "P060": {
+      "partitioner": "different",
+      "prompt_id": 6053,
+      "rollouts": [
+        6,
+        5
+      ]
+    }
+  },
+  "h2": {
+    "S001": {
+      "group": "exited",
+      "prompt_id": "math500_24",
+      "base_correct": 2,
+      "vanilla_correct_by_seed": [
+        3,
+        0,
+        0
+      ],
+      "sample": 22
+    },
+    "S002": {
+      "group": "exited",
+      "prompt_id": "math500_27",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        0,
+        2,
+        0
+      ],
+      "sample": 1
+    },
+    "S003": {
+      "group": "retained",
+      "prompt_id": "math500_391",
+      "base_correct": 2,
+      "vanilla_correct_by_seed": [
+        3,
+        6,
+        6
+      ],
+      "sample": 28
+    },
+    "S004": {
+      "group": "exited",
+      "prompt_id": "math500_123",
+      "base_correct": 3,
+      "vanilla_correct_by_seed": [
+        0,
+        2,
+        0
+      ],
+      "sample": 20
+    },
+    "S005": {
+      "group": "exited",
+      "prompt_id": "math500_216",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        0,
+        0,
+        0
+      ],
+      "sample": 5
+    },
+    "S006": {
+      "group": "retained",
+      "prompt_id": "math500_314",
+      "base_correct": 3,
+      "vanilla_correct_by_seed": [
+        2,
+        2,
+        4
+      ],
+      "sample": 3
+    },
+    "S007": {
+      "group": "retained",
+      "prompt_id": "math500_324",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        2,
+        4,
+        2
+      ],
+      "sample": 17
+    },
+    "S008": {
+      "group": "retained",
+      "prompt_id": "math500_233",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        6,
+        3,
+        8
+      ],
+      "sample": 18
+    },
+    "S009": {
+      "group": "exited",
+      "prompt_id": "math500_326",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        0,
+        1,
+        0
+      ],
+      "sample": 31
+    },
+    "S010": {
+      "group": "retained",
+      "prompt_id": "math500_241",
+      "base_correct": 3,
+      "vanilla_correct_by_seed": [
+        1,
+        3,
+        5
+      ],
+      "sample": 12
+    },
+    "S011": {
+      "group": "retained",
+      "prompt_id": "math500_197",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        1,
+        1,
+        2
+      ],
+      "sample": 16
+    },
+    "S012": {
+      "group": "exited",
+      "prompt_id": "math500_14",
+      "base_correct": 2,
+      "vanilla_correct_by_seed": [
+        0,
+        0,
+        0
+      ],
+      "sample": 28
+    },
+    "S013": {
+      "group": "exited",
+      "prompt_id": "math500_295",
+      "base_correct": 2,
+      "vanilla_correct_by_seed": [
+        0,
+        2,
+        0
+      ],
+      "sample": 5
+    },
+    "S014": {
+      "group": "retained",
+      "prompt_id": "math500_357",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        1,
+        2,
+        1
+      ],
+      "sample": 21
+    },
+    "S015": {
+      "group": "exited",
+      "prompt_id": "math500_130",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        0,
+        0,
+        1
+      ],
+      "sample": 30
+    },
+    "S016": {
+      "group": "retained",
+      "prompt_id": "math500_489",
+      "base_correct": 2,
+      "vanilla_correct_by_seed": [
+        8,
+        6,
+        6
+      ],
+      "sample": 24
+    },
+    "S017": {
+      "group": "exited",
+      "prompt_id": "math500_458",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        0,
+        0,
+        0
+      ],
+      "sample": 30
+    },
+    "S018": {
+      "group": "exited",
+      "prompt_id": "math500_466",
+      "base_correct": 3,
+      "vanilla_correct_by_seed": [
+        0,
+        0,
+        0
+      ],
+      "sample": 16
+    },
+    "S019": {
+      "group": "exited",
+      "prompt_id": "math500_287",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        0,
+        0,
+        0
+      ],
+      "sample": 2
+    },
+    "S020": {
+      "group": "retained",
+      "prompt_id": "math500_351",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        1,
+        5,
+        2
+      ],
+      "sample": 10
+    },
+    "S021": {
+      "group": "exited",
+      "prompt_id": "math500_1",
+      "base_correct": 2,
+      "vanilla_correct_by_seed": [
+        0,
+        1,
+        0
+      ],
+      "sample": 0
+    },
+    "S022": {
+      "group": "retained",
+      "prompt_id": "math500_365",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        2,
+        1,
+        1
+      ],
+      "sample": 12
+    },
+    "S023": {
+      "group": "exited",
+      "prompt_id": "math500_303",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        1,
+        0,
+        0
+      ],
+      "sample": 9
+    },
+    "S024": {
+      "group": "exited",
+      "prompt_id": "math500_230",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        0,
+        0,
+        1
+      ],
+      "sample": 21
+    },
+    "S025": {
+      "group": "exited",
+      "prompt_id": "math500_200",
+      "base_correct": 2,
+      "vanilla_correct_by_seed": [
+        2,
+        0,
+        0
+      ],
+      "sample": 10
+    },
+    "S026": {
+      "group": "exited",
+      "prompt_id": "math500_428",
+      "base_correct": 2,
+      "vanilla_correct_by_seed": [
+        0,
+        0,
+        0
+      ],
+      "sample": 20
+    },
+    "S027": {
+      "group": "retained",
+      "prompt_id": "math500_309",
+      "base_correct": 2,
+      "vanilla_correct_by_seed": [
+        1,
+        1,
+        2
+      ],
+      "sample": 25
+    },
+    "S028": {
+      "group": "retained",
+      "prompt_id": "math500_377",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        4,
+        5,
+        6
+      ],
+      "sample": 6
+    },
+    "S029": {
+      "group": "retained",
+      "prompt_id": "math500_18",
+      "base_correct": 2,
+      "vanilla_correct_by_seed": [
+        2,
+        4,
+        7
+      ],
+      "sample": 29
+    },
+    "S030": {
+      "group": "retained",
+      "prompt_id": "math500_145",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        3,
+        2,
+        2
+      ],
+      "sample": 7
+    },
+    "S031": {
+      "group": "exited",
+      "prompt_id": "math500_10",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        0,
+        1,
+        0
+      ],
+      "sample": 1
+    },
+    "S032": {
+      "group": "exited",
+      "prompt_id": "math500_209",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        1,
+        0,
+        0
+      ],
+      "sample": 29
+    },
+    "S033": {
+      "group": "exited",
+      "prompt_id": "math500_282",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        0,
+        0,
+        0
+      ],
+      "sample": 5
+    },
+    "S034": {
+      "group": "exited",
+      "prompt_id": "math500_425",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        1,
+        0,
+        0
+      ],
+      "sample": 9
+    },
+    "S035": {
+      "group": "retained",
+      "prompt_id": "math500_4",
+      "base_correct": 2,
+      "vanilla_correct_by_seed": [
+        3,
+        5,
+        2
+      ],
+      "sample": 20
+    },
+    "S036": {
+      "group": "retained",
+      "prompt_id": "math500_134",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        1,
+        1,
+        2
+      ],
+      "sample": 19
+    },
+    "S037": {
+      "group": "retained",
+      "prompt_id": "math500_68",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        2,
+        4,
+        1
+      ],
+      "sample": 28
+    },
+    "S038": {
+      "group": "retained",
+      "prompt_id": "math500_177",
+      "base_correct": 2,
+      "vanilla_correct_by_seed": [
+        3,
+        1,
+        3
+      ],
+      "sample": 25
+    },
+    "S039": {
+      "group": "retained",
+      "prompt_id": "math500_147",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        2,
+        1,
+        1
+      ],
+      "sample": 14
+    },
+    "S040": {
+      "group": "retained",
+      "prompt_id": "math500_100",
+      "base_correct": 1,
+      "vanilla_correct_by_seed": [
+        2,
+        2,
+        5
+      ],
+      "sample": 17
+    }
+  },
+  "h2_info": {
+    "n_exited_total": 20,
+    "n_vanilla_seeds": 3
+  },
+  "seed": 0
+}

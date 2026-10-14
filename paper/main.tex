@@ -90,19 +90,20 @@ Chennai, India\\
 
 \begin{abstract}
 Reinforcement learning with verifiable rewards (RLVR) raises the single-sample accuracy of language models, but
-whether it shrinks the set of problems a model can solve is disputed, all of the evidence is automatic, and fixes
+whether it shrinks the set of problems a model can solve is disputed, the evidence is automatic, and fixes
 that act within a rollout group and across prompts have not been tested together. We study all three on
 Qwen2.5-0.5B-Instruct trained with GRPO on MATH. A pre-registered $2\times3$ factorial crosses a macro factor (none,
-or a topic-level budget on positive advantage) with a micro factor (none, the SELF filter, or redistribution over
-solution modes), with four or five seeds per cell (27 models), and a blinded human audit examines modes and losses. At \R{meta.rpp} rollouts per training problem, \RT{R1}{vanilla GRPO does not shrink the boundary: MATH-500
+or a topic budget on positive advantage) with a micro factor (none, the SELF filter, or redistribution over
+solution modes), with four or five seeds per cell (27 models), plus a blinded human audit. At \R{meta.rpp} rollouts per training problem, \RT{R1}{vanilla GRPO does not shrink the boundary: MATH-500
 Pass@1 moves from \R{math.base.p1}\% to \R{math.vanilla.p1}\% and Pass@32 from \R{math.base.p32}\% to
-\R{math.vanilla.p32}\%, and problems leaving the boundary stay at the sampling-noise level. Neither pre-registered
+\R{math.vanilla.p32}\%, and boundary exits stay at the sampling-noise level. Neither pre-registered
 contrast is significant (95\% CIs of \R{math.P1.g32} and \R{math.P2.g32} points on the gain from $k=1$ to $k=32$).
 The topic budget raises Pass@1 by about one point over vanilla (uncorrected).}
 \RT{R17}{Annotators agreed on \R{human.h1.rawagree}\% of solution pairs (PABAK \R{human.h1.pabak}) and judged
 \R{human.h1.cons.same} of \R{human.h1.consensus} agreed pairs to share one approach; the word-overlap partitioner
 that splits them into ``modes'' scores \R{human.h1.acc}\%, below the \R{human.h1.alwayssame}\% of always answering
-``same''. The diversity these fixes reweight is mostly wording; validity labels agreed no better than chance.} We
+``same''. The diversity these fixes reweight is mostly wording. A tie-breaking third annotator found lost problems no
+more often validly solved than kept ones.} We
 hypothesise that the null reflects low training intensity; we did not vary it.
 
 \smallskip\noindent\textit{Code, data and pre-registration:}\ \repo
@@ -367,7 +368,8 @@ such.
 
 \textbf{Human audit (pre-registered, secondary).} Two annotators who are not authors\ifblind\else, Shruti K (BBA)
 and Sri Prathin (final-year B.E. CSE student)\fi, label two blinded sheets without seeing condition, group or
-partitioner output. \emph{H1:} \R{human.h1.items} pairs of correct base-model solutions to the same training
+partitioner output; as pre-registered, a third non-author annotator labelled only the H2 items on which they
+disagreed, without seeing their labels. \emph{H1:} \R{human.h1.items} pairs of correct base-model solutions to the same training
 problem, half placed in one mode by the partitioner and half in two, labelled \textsc{same} or \textsc{different}
 approach under the definition of~\cite{lee2026strategy}; modes count as approach-level if the partitioner's balanced
 accuracy against the consensus reaches 70\%. \emph{H2:} MATH-500 problems the base model solves but vanilla GRPO
@@ -555,15 +557,15 @@ falls in one class, which depresses $\kappa$ however well raters agree; the prev
 \R{human.h1.bacc}\%, formally above the 70\% bar, but one of its two classes holds a single pair, so we do not rely
 on it. We read the modes as surface clusters, and MEG as redistributing credit over them.}
 
-\textbf{H2, what is lost?} Despite its net gains, vanilla GRPO lost \R{human.h2.exited.total} problems in a majority
-of its first three seeds (the audit was drawn before the extension runs). \RT{R18}{The annotators disagreed on whether the base model's successes on them were valid: A rated
+\textbf{H2, what is lost?} Vanilla GRPO lost \R{human.h2.exited.total} problems in a majority
+of its first three seeds (the audit was drawn before the extension runs). \RT{R18}{A and B disagreed on whether the base model's successes on them were valid: A rated
 \R{human.h2.A.valid} of \R{human.h2.items} solutions valid and B \R{human.h2.B.valid} ($\kappa=\R{human.h2.kappa}$,
-agreement on \R{human.h2.consensus} items). On those items, \R{human.h2.exited.rate}\% of exited solutions were valid
-(CI \R{human.h2.exited.ci}, $n=\R{human.h2.exited.n}$) against \R{human.h2.retained.rate}\% of retained ones (CI
-\R{human.h2.retained.ci}, $n=\R{human.h2.retained.n}$; Fisher $p=\R{human.h2.p}$). Read literally, the
-pre-registered rule calls this a genuine loss, but a subset chosen by agreement at chance-level reliability cannot
-carry that; each annotator alone shows the same direction without significance (A $p=\R{human.h2.A.p}$, B
-$p=\R{human.h2.B.p}$).} We report H2 as inconclusive.
+agreement on 15 items). The third annotator labelled the 25 disputed items and sided with A on 22. By majority,
+\R{human.h2.exited.rate}\% of exited solutions were valid (CI \R{human.h2.exited.ci}, $n=\R{human.h2.exited.n}$)
+against \R{human.h2.retained.rate}\% of retained ones (CI \R{human.h2.retained.ci}, $n=\R{human.h2.retained.n}$;
+Fisher $p=\R{human.h2.p}$).} Under the pre-registered rule this is \emph{mixed}: most lost problems had been solved
+with flawed reasoning, but so had most kept ones, so vanilla GRPO did not selectively lose lucky hits or genuine
+solutions. (The 15 items A and B agreed on alone gave 5 of 6 against 2 of 9, $p=0.041$.)
 
 % =====================================================================================================
 \section{Discussion and Limitations}
@@ -590,7 +592,7 @@ a planned 240), evaluated only on MATH-500. Four or five seeds per cell leave th
 trajectory over training. SELF omits its
 forward-KL term and, by skipping solved prompts, takes fewer effective updates than vanilla. No random-partition
 control for MEG or random-weight control for CB was run. The annotators differed in strictness on H2, and the
-pre-registered third annotator was not used. The correlations above are descriptive and were added after the
+majority follows the stricter two. The correlations above are descriptive and were added after the
 pre-registration.
 
 % =====================================================================================================
@@ -604,8 +606,7 @@ partitioner's modes to be wording variants of one approach. The protocol runs on
 
 \ifblind\else
 \section*{Acknowledgment}
-We thank the two annotators. This work used AWS credits awarded to our team for placing among the top 500 teams in
-the Amazon ML Challenge 2026. AWS compute: \R{meta.gpuh}
+We thank the three annotators. AWS credits came from the Amazon ML Challenge 2026. AWS compute: \R{meta.gpuh}
 A10G GPU-hours, about \$\R{meta.usd}. An AI assistant (Claude, Anthropic) was used to write analysis
 code and to draft and edit parts of the text; the authors checked the results against the logs and take
 responsibility for the content.
