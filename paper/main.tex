@@ -96,8 +96,8 @@ to how Pass@$k$ is measured. All of this evidence is automatic, nobody has asked
 that act within a rollout group and across prompts have never been tested together. We take up all three gaps on
 Qwen2.5-0.5B-Instruct trained with GRPO on MATH. A pre-registered $2\times3$ factorial crosses a macro factor (none,
 or a topic-level budget on positive advantage) with a micro factor (none, the per-prompt SELF filter, or
-mean-preserving redistribution over solution modes), with two or three seeds per cell, and a blinded human audit
-checks what is lost. At \R{meta.rpp} rollouts per training problem, \RT{R1}{vanilla GRPO does not shrink the
+mean-preserving redistribution over solution modes), with four or five seeds per cell (27 trained models), and a
+blinded human audit checks what is lost. At \R{meta.rpp} rollouts per training problem, \RT{R1}{vanilla GRPO does not shrink the
 boundary. MATH-500 Pass@1 moves from \R{math.base.p1}\% to \R{math.vanilla.p1}\%, Pass@32 rises from
 \R{math.base.p32}\% to \R{math.vanilla.p32}\%, and every condition gains more problems than it loses. Neither
 pre-registered contrast is significant: under the budget, swapping the SELF filter for mode redistribution changes
@@ -143,7 +143,7 @@ rollouts, for example by giving rare correct modes more credit than common ones~
 \emph{cross-prompt} methods reweight whole problems or
 tasks~\cite{sun2026curverl,yuan2026overtraining,ramesh2026mtgrpo,nguyen2025paradox}. The two act on different axes
 but have not been tested together (ReCo combines two corrections, both within one prompt~\cite{park2026reco}). One
-pre-registered study addresses all three gaps:
+pre-registered study addresses all three gaps. Our contributions:
 \begin{itemize}
 \item \emph{Is shrinkage real at SLM scale?} A multi-seed measurement on Qwen2.5-0.5B-Instruct~\cite{qwen2024qwen25}
 trained on MATH~\cite{hendrycks2021math}, with problem-level boundary entries and exits and the number of rollouts
@@ -154,7 +154,8 @@ are distinct strategies and (H2) whether the base model's successes on lost prob
 macro) with no micro term, the SELF filter, or intra-group mode-rarity redistribution (MEG).
 \item \RT{R2}{The answers: at about two rollouts per training problem RLVR expands the boundary slightly, no fix or
 combination moves the shrinkage slope by more than about one point per unit $\ln k$, and the modes the fixes rely
-on are mostly wording.}
+on are mostly wording. In an exploratory comparison, the topic budget raises Pass@1 by about one point over
+vanilla without changing the slope.}
 \end{itemize}
 
 % =====================================================================================================
@@ -377,7 +378,9 @@ groups are compared with a two-sided Fisher exact test.
 
 \textbf{Reproducibility.} Code, logs, annotation sheets and the script behind every number are in \repo. The
 pre-registration was written on 2026-10-03 and changed only by dated entries; it was first committed after the
-runs\ifblind\else\ (\texttt{4cdc43a})\fi, so its dates are self-reported.
+runs\ifblind\else\ (\texttt{4cdc43a})\fi, so its dates are self-reported. The main study had two or three seeds
+per cell (16 runs); we then added 11 runs, registered before they ran (14 planned, cut to 11 for budget), giving
+27 models and 432{,}000 scored solutions.
 
 % =====================================================================================================
 \section{Results}
@@ -480,18 +483,23 @@ E1 & CB$\times$MEG $-$ Vanilla & \R{math.E1.est} & \R{math.E1.bci} & \R{math.E1.
 \end{table}
 
 \RT{R4}{All six slopes are positive, from \R{math.meg.slope} (\cond{MEG}) to \R{math.vanilla.slope}
-(\cond{Vanilla}), and no gate beats vanilla.} \RT{R5}{Neither primary contrast clears the pre-registered bar
+(\cond{Vanilla}); no gate has a steeper slope than vanilla.} \RT{R5}{Neither primary contrast clears the pre-registered bar
 (Table~\ref{tab:contrasts}).} \RT{R6}{In points of gain between $k=1$ and $k=32$, P1 lies within \R{math.P1.g32} and
 P2 within \R{math.P2.g32}, so any difference between the micro terms is under about three points. The interactions
 are wider, \R{math.S1.g32} and \R{math.S2.g32}, which admits effects larger than vanilla's whole gain at $k=32$; with
-two seeds per cell the interaction question stays open.} \RT{R19}{Both primary 90\% intervals lie inside
+four seeds per cell the interaction question stays open.} \RT{R19}{Both primary 90\% intervals lie inside
 $\pm\R{meta.sesoi}$ pp per $\ln k$ ($\pm\R{meta.sesoi32}$ points at $k=32$), so we call P1 and P2 equivalent to zero
 within that bound, which we chose after seeing the data; the interactions do not meet it. With the between-seed
-spread we observed, three seeds detect a difference of about \R{pow.P1.mde3} (P1) and \R{pow.P2.mde3} (P2) pp per
-$\ln k$ at 80\% power, and five seeds would detect \R{pow.P1.mde5} and \R{pow.P2.mde5}.} We read the primary
-contrasts as a bounded null, as pre-registered. The gates also made runs less reproducible: the slope's standard deviation across seeds is
-\R{math.vanilla.slopesd} for \cond{Vanilla} and \R{math.meg.slopesd} for \cond{MEG} (\R{math.heg.slopesd} and
-\R{math.hcb.slopesd} for the composites), a descriptive comparison at three seeds.
+spread we observed, our five seeds detect a difference of about \R{pow.P1.mde5} (P1) and \R{pow.P2.mde5} (P2) pp per
+$\ln k$ at 80\% power.} We read the primary
+contrasts as a bounded null, as pre-registered. Seed-to-seed spread is similar in every condition: the slope's
+standard deviation runs from \R{math.heg.slopesd} (\cond{CB$\times$MEG}) to \R{math.vanilla.slopesd} (\cond{Vanilla}).
+
+\textbf{Exploratory, not pre-registered.} Paired by seed against vanilla (four pairs, $t$ intervals, uncorrected
+for the 15 comparisons we ran), the topic budget raises Pass@1: by +0.9 points with \cond{CB} (95\% CI
+[+0.2, +1.5]) and by +1.0 with \cond{CB$\times$SELF} ([+0.4, +1.6]). \cond{CB$\times$SELF} also loses 4.3 fewer
+problems ([0.3, 8.2]), but no condition's Pass@32 is distinguishable from vanilla's (every CI spans zero). The
+budget makes single samples more accurate without widening or narrowing the boundary.
 
 \subsection{What each level does}
 Mode entropy of the correct rollouts starts at \R{meta.entropy0} and \RT{R7}{does not decay under vanilla GRPO}
@@ -501,8 +509,8 @@ Mode entropy of the correct rollouts starts at \R{meta.entropy0} and \RT{R7}{doe
 the \R{meta.selrate}\% of prompts whose greedy answer is wrong and skips the rest, for a mean positive weight of
 \R{math.self.posw}. Changes are
 uneven across subjects (Fig.~\ref{fig:subjects}): under vanilla GRPO, Pass@32 changes by \R{subj.cp.vanilla}~pp in
-Counting \& Probability and by \R{subj.geo.vanilla}~pp in Geometry. \RT{R8}{The macro gate binds but changes
-nothing. In the CB runs a subject's share of positive credit does not predict its Pass@32 change (Spearman
+Counting \& Probability and by \R{subj.geo.vanilla}~pp in Geometry. \RT{R8}{The macro gate binds, but not
+through its topic signal. In the CB runs a subject's share of positive credit does not predict its Pass@32 change (Spearman
 $\rho=\R{mech.topic.rho}$, $n=\R{mech.topic.n}$ subject-runs, pooled and so not independent), which leaves the premise of a topic budget
 unsupported.}
 
@@ -545,7 +553,7 @@ falls in one class, which depresses $\kappa$ however well raters agree; the prev
 on it. We read the modes as surface clusters, and MEG as redistributing credit over them.}
 
 \textbf{H2, what is lost?} Despite its net gains, vanilla GRPO lost \R{human.h2.exited.total} problems in a majority
-of seeds. \RT{R18}{The annotators disagreed on whether the base model's successes on them were valid: A rated
+of its first three seeds (the audit was drawn before the extension runs). \RT{R18}{The annotators disagreed on whether the base model's successes on them were valid: A rated
 \R{human.h2.A.valid} of \R{human.h2.items} solutions valid and B \R{human.h2.B.valid} ($\kappa=\R{human.h2.kappa}$,
 agreement on \R{human.h2.consensus} items). On those items, \R{human.h2.exited.rate}\% of exited solutions were valid
 (CI \R{human.h2.exited.ci}, $n=\R{human.h2.exited.n}$) against \R{human.h2.retained.rate}\% of retained ones (CI
@@ -558,14 +566,14 @@ $p=\R{human.h2.B.p}$).} We report H2 as inconclusive.
 \section{Discussion and Limitations}
 % =====================================================================================================
 \RT{R13}{\textbf{Training intensity, not size.} With about two rollouts per training problem and a policy that moved
-little (final KL to the base model 3--14 times its bf16 noise floor of about $2\times10^{-4}$), RLVR on a 0.5B model expands the boundary
+little (final KL to the base model 2--13 times its bf16 noise floor of about $2\times10^{-4}$), RLVR on a 0.5B model expands the boundary
 slightly. Accounts that tie shrinkage to repeated reinforcement of saturated problems~\cite{yuan2026overtraining} or
 to a long exploitation phase~\cite{yao2025debate} predict exactly this, and the reported
 inversions~\cite{yue2025rl,nguyen2025paradox} come from far longer training. We read our null as a statement about
 the regime a single-GPU budget reaches, not about model size. It suggests a direct test: raise rollouts per problem
-at 0.5B and shrinkage should appear. We have registered that test: five seeds per cell and 240-step runs scored at
-steps 120, 180 and 240. Our prediction, made before running it, is that vanilla's slope declines over those steps;
-if it does not, the intensity reading fails.} \textbf{The partition is the weak link.} Embedding partitions put nearly every
+at 0.5B and shrinkage should appear. We registered that test (240-step runs scored at steps 120, 180 and 240) but
+could not afford it; our prediction, made before any such run, is that vanilla's slope declines over those steps,
+and if it does not, the intensity reading fails.} \textbf{The partition is the weak link.} Embedding partitions put nearly every
 group in one mode (Table~\ref{tab:calib}), and the bigram partition finds about three modes that people see as one
 approach. Neither tracks what intra-group methods assume it tracks, which matters for any method that reweights credit by the
 diversity of correct rollouts within a group~\cite{cao2026cuegrpo,chen2026gcpo,chen2025dragrpo}. This fits Lee et al.'s
@@ -574,7 +582,7 @@ the dataset but rarely appear in what a 0.5B model samples. We do not claim that
 budgets; the bounds in Table~\ref{tab:contrasts} are what a longer study would need to beat.
 
 \textbf{Limitations.} One model at one size, LoRA, one RL algorithm and short training (\R{meta.steps} steps, cut from
-a planned 240), evaluated only on MATH-500. Two or three seeds per cell leave the interactions open, and each run has one full evaluation, so we show no
+a planned 240), evaluated only on MATH-500. Four or five seeds per cell leave the interactions open, and each run has one full evaluation, so we show no
 trajectory over training. SELF omits its
 forward-KL term, and no random-partition control was run. The annotators differed in strictness on H2, and the
 pre-registered third annotator was not used. The correlations above are descriptive and were added after the
@@ -592,8 +600,8 @@ partitioner's modes to be wording variants of one approach. The protocol runs on
 \ifblind\else
 \section*{Acknowledgment}
 We thank the two annotators. This work used AWS credits awarded to our team for placing among the top 500 teams in
-the Amazon ML Challenge 2026; early experiments ran on a local NVIDIA RTX 3060 (12\,GB). AWS compute for
-the main study: \R{meta.gpuh} A10G GPU-hours, about \$\R{meta.usd}. An AI assistant (Claude, Anthropic) was used to write analysis
+the Amazon ML Challenge 2026; early experiments ran on a local NVIDIA RTX 3060 (12\,GB). AWS compute: \R{meta.gpuh}
+A10G GPU-hours, about \$\R{meta.usd}. An AI assistant (Claude, Anthropic) was used to write analysis
 code and to draft and edit parts of the text; the authors checked the results against the logs and take
 responsibility for the content.
 \fi

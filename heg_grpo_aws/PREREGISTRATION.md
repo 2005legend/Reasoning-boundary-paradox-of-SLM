@@ -237,3 +237,9 @@ reported with their intervals and are not called null unless their 90% CI falls 
   for every condition, 5 for the three conditions in P1 and P2. Same code and hyperparameters as the main runs
   (`train.py` on the instances is the main-study version; `--snapshot_steps` is not used). Experiments B (240 steps)
   and C (1.5B) are not run. Queues: `queues/extension_seeds_0.5B_1.txt`, `_2.txt`.
+- 2026-10-14 (after the extension runs): all 11 Extension-A runs finished (27 runs in total; 4 seeds for vanilla,
+  SELF and CB, 5 for MEG, CB x SELF and CB x MEG). Re-ran analyze.py, power.py and mechanism.py on all 27. P1 and P2
+  stay non-significant (Holm p = 0.87) and both 90% CIs stay inside +-1 pp per ln k. Added after seeing these results,
+  exploratory and uncorrected: `scripts/exploratory_vs_vanilla.py` (each condition minus vanilla, paired by seed, on
+  Pass@1, Pass@32 and exits). Removed from the paper a 3-seed observation that did not hold at 4-5 seeds (vanilla's
+  slope varied least across seeds; at 4 seeds it varies most).

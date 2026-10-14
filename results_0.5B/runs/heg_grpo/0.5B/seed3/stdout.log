@@ -1,0 +1,44 @@
+[2026-10-13 08:04:36] run=heg_grpo size=0.5B seed=3 tier=standard steps=120 device=cuda gpu=NVIDIA A10G
+[2026-10-13 08:04:38] [after model load] allocated=1.02GB peak=1.02GB
+[2026-10-13 08:04:39] 7494 math train prompts, 50 math500 monitor problems; 0.26 epochs = 2.0 rollouts per training problem
+[2026-10-13 08:04:39] Macro topics = MATH subjects: {'Algebra': 1742, 'Counting & Probability': 771, 'Geometry': 868, 'Intermediate Algebra': 1295, 'Number Theory': 867, 'Prealgebra': 1205, 'Precalculus': 746}
+[2026-10-13 08:04:39] Gate: heg_grpo | mode partition: bigram
+[2026-10-13 08:04:39] Training 120 steps: 16 prompts x 8 rollouts x 1 micro-steps per update, lr=1e-05
+[2026-10-13 08:06:28] step    0/120 | 109.1s | reward=+0.312 cor=0.31 zv=0.56 | gate_w=1.000 pos_w=1.000 ent=0.583 | kl=0.0000 | len=495 trunc=0.04 | lr=0.00e+00 | ETA 03h36m | $0.03 so far, ~$3.63 left
+[2026-10-13 08:14:15] step    5/120 |  83.3s | reward=+0.438 cor=0.44 zv=0.50 | gate_w=1.000 pos_w=1.000 ent=0.778 | kl=0.0003 | len=575 trunc=0.16 | lr=4.17e-06 | ETA 02h54m | $0.16 so far, ~$2.93 left
+[2026-10-13 08:22:03] step   10/120 |  95.0s | reward=+0.234 cor=0.23 zv=0.62 | gate_w=1.000 pos_w=1.000 ent=0.691 | kl=0.0002 | len=595 trunc=0.17 | lr=8.33e-06 | ETA 02h44m | $0.29 so far, ~$2.76 left
+[2026-10-13 08:30:23] step   15/120 |  93.4s | reward=+0.281 cor=0.28 zv=0.50 | gate_w=1.000 pos_w=1.000 ent=0.652 | kl=0.0003 | len=565 trunc=0.14 | lr=9.98e-06 | ETA 02h43m | $0.43 so far, ~$2.73 left
+[2026-10-13 08:37:42] step   20/120 |  96.4s | reward=+0.234 cor=0.23 zv=0.56 | gate_w=1.000 pos_w=1.000 ent=0.591 | kl=0.0003 | len=600 trunc=0.15 | lr=9.87e-06 | ETA 02h31m | $0.55 so far, ~$2.55 left
+[2026-10-13 08:43:47] merged-generation gap (mean |dlogit|): copy-vs-LoRA 1.02e-01, base-vs-LoRA 1.07e-01
+[2026-10-13 08:43:47] checkpoint saved at step 25
+[2026-10-13 08:45:12] step   25/120 |  84.5s | reward=+0.297 cor=0.30 zv=0.69 | gate_w=1.000 pos_w=1.000 ent=0.713 | kl=0.0002 | len=612 trunc=0.18 | lr=9.65e-06 | ETA 02h24m | $0.68 so far, ~$2.42 left
+[2026-10-13 08:52:16] step   30/120 |  88.8s | reward=+0.109 cor=0.11 zv=0.75 | gate_w=1.000 pos_w=1.000 ent=1.000 | kl=0.0003 | len=629 trunc=0.16 | lr=9.33e-06 | ETA 02h10m | $0.80 so far, ~$2.18 left
+[2026-10-13 08:59:59] step   35/120 |  85.7s | reward=+0.312 cor=0.31 zv=0.69 | gate_w=1.000 pos_w=1.000 ent=0.709 | kl=0.0004 | len=573 trunc=0.16 | lr=8.92e-06 | ETA 01h59m | $0.93 so far, ~$2.01 left
+[2026-10-13 09:07:31] step   40/120 |  92.9s | reward=+0.289 cor=0.29 zv=0.56 | gate_w=1.000 pos_w=1.000 ent=0.765 | kl=0.0003 | len=491 trunc=0.05 | lr=8.43e-06 | ETA 01h56m | $1.05 so far, ~$1.95 left
+[2026-10-13 09:16:37] step   45/120 | 110.6s | reward=+0.367 cor=0.37 zv=0.50 | gate_w=1.000 pos_w=1.000 ent=0.707 | kl=0.0003 | len=557 trunc=0.14 | lr=7.87e-06 | ETA 01h50m | $1.21 so far, ~$1.86 left
+[2026-10-13 09:22:20] merged-generation gap (mean |dlogit|): copy-vs-LoRA 1.03e-01, base-vs-LoRA 1.18e-01
+[2026-10-13 09:22:20] checkpoint saved at step 50
+[2026-10-13 09:23:50] step   50/120 |  89.3s | reward=+0.352 cor=0.35 zv=0.50 | gate_w=1.000 pos_w=1.000 ent=0.696 | kl=0.0005 | len=565 trunc=0.16 | lr=7.24e-06 | ETA 01h44m | $1.33 so far, ~$1.75 left
+[2026-10-13 09:32:07] step   55/120 |  94.4s | reward=+0.266 cor=0.27 zv=0.44 | gate_w=1.000 pos_w=1.000 ent=0.818 | kl=0.0005 | len=603 trunc=0.11 | lr=6.57e-06 | ETA 01h38m | $1.47 so far, ~$1.66 left
+[2026-10-13 09:39:19] step   60/120 |  84.8s | reward=+0.430 cor=0.43 zv=0.38 | gate_w=1.000 pos_w=1.000 ent=0.749 | kl=0.0007 | len=509 trunc=0.07 | lr=5.87e-06 | ETA 01h29m | $1.59 so far, ~$1.50 left
+[2026-10-13 09:46:40] step   65/120 |  83.3s | reward=+0.430 cor=0.43 zv=0.50 | gate_w=1.000 pos_w=1.000 ent=0.646 | kl=0.0009 | len=539 trunc=0.12 | lr=5.15e-06 | ETA 01h17m | $1.71 so far, ~$1.30 left
+[2026-10-13 09:55:35] step   70/120 |  88.0s | reward=+0.281 cor=0.28 zv=0.75 | gate_w=1.000 pos_w=1.000 ent=0.658 | kl=0.0013 | len=538 trunc=0.12 | lr=4.42e-06 | ETA 01h13m | $1.86 so far, ~$1.23 left
+[2026-10-13 10:01:58] merged-generation gap (mean |dlogit|): copy-vs-LoRA 1.05e-01, base-vs-LoRA 1.42e-01
+[2026-10-13 10:01:58] checkpoint saved at step 75
+[2026-10-13 10:03:29] step   75/120 |  90.3s | reward=+0.172 cor=0.17 zv=0.50 | gate_w=1.000 pos_w=1.000 ent=0.706 | kl=0.0010 | len=612 trunc=0.15 | lr=3.71e-06 | ETA 01h03m | $1.99 so far, ~$1.07 left
+[2026-10-13 10:10:54] step   80/120 |  84.3s | reward=+0.406 cor=0.41 zv=0.56 | gate_w=1.000 pos_w=1.000 ent=0.730 | kl=0.0006 | len=556 trunc=0.18 | lr=3.02e-06 | ETA 00h57m | $2.12 so far, ~$0.97 left
+[2026-10-13 10:20:16] step   85/120 | 172.6s | reward=+0.453 cor=0.45 zv=0.50 | gate_w=1.000 pos_w=1.000 ent=0.884 | kl=0.0015 | len=471 trunc=0.12 | lr=2.38e-06 | ETA 00h52m | $2.27 so far, ~$0.87 left
+[2026-10-13 10:28:04] step   90/120 | 114.3s | reward=+0.367 cor=0.37 zv=0.31 | gate_w=1.000 pos_w=1.000 ent=0.663 | kl=0.0008 | len=510 trunc=0.02 | lr=1.79e-06 | ETA 00h43m | $2.40 so far, ~$0.74 left
+[2026-10-13 10:36:25] step   95/120 | 119.2s | reward=+0.453 cor=0.45 zv=0.56 | gate_w=1.000 pos_w=1.000 ent=0.790 | kl=0.0007 | len=454 trunc=0.03 | lr=1.26e-06 | ETA 00h37m | $2.54 so far, ~$0.62 left
+[2026-10-13 10:42:56] merged-generation gap (mean |dlogit|): copy-vs-LoRA 1.00e-01, base-vs-LoRA 1.58e-01
+[2026-10-13 10:42:56] checkpoint saved at step 100
+[2026-10-13 10:48:27] [monitor eval @ 100] Pass@k={1: 0.282, 2: 0.3893333333333333, 3: 0.4548333333333334, 5: 0.530952380952381, 10: 0.6} slope=+0.0177
+[2026-10-13 10:49:50] step  100/120 |  82.5s | reward=+0.273 cor=0.27 zv=0.38 | gate_w=1.000 pos_w=1.000 ent=0.690 | kl=0.0011 | len=576 trunc=0.16 | lr=8.23e-07 | ETA 00h29m | $2.77 so far, ~$0.49 left
+[2026-10-13 10:57:27] step  105/120 |  89.1s | reward=+0.180 cor=0.18 zv=0.62 | gate_w=1.000 pos_w=1.000 ent=0.842 | kl=0.0012 | len=517 trunc=0.09 | lr=4.68e-07 | ETA 00h20m | $2.90 so far, ~$0.35 left
+[2026-10-13 11:04:43] step  110/120 |  87.4s | reward=+0.172 cor=0.17 zv=0.44 | gate_w=1.000 pos_w=1.000 ent=0.845 | kl=0.0009 | len=634 trunc=0.19 | lr=2.10e-07 | ETA 00h13m | $3.02 so far, ~$0.22 left
+[2026-10-13 11:11:56] step  115/120 |  86.6s | reward=+0.469 cor=0.47 zv=0.38 | gate_w=1.000 pos_w=1.000 ent=0.594 | kl=0.0010 | len=495 trunc=0.05 | lr=5.28e-08 | ETA 00h05m | $3.14 so far, ~$0.10 left
+[2026-10-13 11:17:30] step  119/120 |  81.9s | reward=+0.289 cor=0.29 zv=0.56 | gate_w=1.000 pos_w=1.000 ent=0.680 | kl=0.0010 | len=479 trunc=0.05 | lr=2.12e-09 | ETA 00h00m | $3.23 so far, ~$0.00 left
+[2026-10-13 11:17:30] checkpoint saved at step 120
+[2026-10-13 11:17:31] Training complete in 03h12m -> /home/ubuntu/artifacts/runs/heg_grpo/0.5B/seed3
+[2026-10-13 11:17:32] [eval] math500: 500 problems x 32 samples
+[2026-10-13 13:32:16] [eval] math500: Pass@k={1: 0.31425, 2: 0.4172822580645161, 4: 0.5162852057842047, 8: 0.6060678497475828, 16: 0.6849031611162693, 32: 0.754} (134.7 min)

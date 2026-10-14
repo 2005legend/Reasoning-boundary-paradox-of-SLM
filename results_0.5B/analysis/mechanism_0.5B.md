@@ -4,21 +4,21 @@ Base model: 6.73 correct modes per problem, top-mode share 0.43, normalized entr
 
 | condition | seeds | slope | exits | entries | modes | d modes vs base | top share | d top share | train ent (last) | KL (last) |
 |---|---|---|---|---|---|---|---|---|---|---|
-| cb_grpo | 2 | +0.0021 | 26.0 | 34.0 | 7.08 | +0.515 | 0.415 | -0.015 | 0.741 | 0.0009 |
-| h_cb_grpo | 3 | +0.0037 | 20.7 | 32.3 | 6.70 | +0.104 | 0.435 | +0.007 | 0.664 | 0.0005 |
-| heg_grpo | 3 | +0.0035 | 25.0 | 33.3 | 6.98 | +0.420 | 0.411 | -0.020 | 0.704 | 0.0010 |
-| meg | 3 | +0.0013 | 28.3 | 30.7 | 7.55 | +0.917 | 0.381 | -0.048 | 0.734 | 0.0021 |
-| o_self | 2 | +0.0048 | 25.5 | 36.5 | 6.97 | +0.359 | 0.417 | -0.013 | 0.690 | 0.0008 |
-| vanilla | 3 | +0.0066 | 25.0 | 36.3 | 7.39 | +0.942 | 0.386 | -0.050 | 0.762 | 0.0028 |
+| cb_grpo | 4 | +0.0028 | 26.2 | 36.0 | 7.08 | +0.535 | 0.413 | -0.019 | 0.709 | 0.0009 |
+| h_cb_grpo | 5 | +0.0032 | 23.0 | 33.6 | 6.78 | +0.194 | 0.431 | +0.001 | 0.705 | 0.0005 |
+| heg_grpo | 5 | +0.0038 | 24.0 | 34.0 | 6.97 | +0.403 | 0.414 | -0.017 | 0.727 | 0.0011 |
+| meg | 5 | +0.0015 | 29.0 | 31.8 | 7.56 | +0.962 | 0.379 | -0.051 | 0.762 | 0.0024 |
+| o_self | 4 | +0.0022 | 26.0 | 32.2 | 6.97 | +0.395 | 0.417 | -0.015 | 0.708 | 0.0007 |
+| vanilla | 4 | +0.0042 | 26.0 | 33.2 | 7.44 | +0.943 | 0.386 | -0.048 | 0.767 | 0.0026 |
 
 ## Links across runs (Spearman)
 
 | link | n | rho | p |
 |---|---|---|---|
-| diversity_change -> exits (modes_delta vs exits) | 16 | +0.57 | 0.022 |
-| concentration_change -> exits (top_share_delta vs exits) | 16 | -0.47 | 0.068 |
-| exits -> slope | 16 | -0.36 | 0.173 |
-| diversity_change -> slope (modes_delta vs slope) | 16 | -0.01 | 0.966 |
-| training entropy (last 20%) -> slope | 16 | +0.11 | 0.672 |
-| policy movement (KL, last 20%) -> slope | 16 | +0.30 | 0.264 |
-| topic spend share -> topic Pass@32 change (CB runs, pooled) | 28 | +0.01 | 0.964 |
+| diversity_change -> exits (modes_delta vs exits) | 27 | +0.40 | 0.039 |
+| concentration_change -> exits (top_share_delta vs exits) | 27 | -0.37 | 0.058 |
+| exits -> slope | 27 | -0.51 | 0.007 |
+| diversity_change -> slope (modes_delta vs slope) | 27 | -0.07 | 0.747 |
+| training entropy (last 20%) -> slope | 27 | +0.11 | 0.594 |
+| policy movement (KL, last 20%) -> slope | 27 | +0.24 | 0.228 |
+| topic spend share -> topic Pass@32 change (CB runs, pooled) | 98 | -0.02 | 0.852 |

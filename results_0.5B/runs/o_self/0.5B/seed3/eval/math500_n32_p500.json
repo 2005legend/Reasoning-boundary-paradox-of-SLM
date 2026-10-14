@@ -1,0 +1,39 @@
+{
+  "settings": {
+    "benchmark": "math500",
+    "n_samples": 32,
+    "k_values": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32
+    ],
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "sample_seed": 1234,
+    "subset_seed": 0,
+    "n_problems": 500,
+    "max_new_tokens": 1024
+  },
+  "pass_at_k": {
+    "1": 0.310125,
+    "2": 0.4124637096774194,
+    "4": 0.5108076195773081,
+    "8": 0.5994477008642082,
+    "16": 0.6756796041441312,
+    "32": 0.74
+  },
+  "ceiling_flags": {
+    "1": false,
+    "2": false,
+    "4": false,
+    "8": false,
+    "16": false,
+    "32": false
+  },
+  "mean_completion_tokens": 550.9486875,
+  "frac_truncated": 0.1135,
+  "wall_seconds": 8070.276057004929
+}
