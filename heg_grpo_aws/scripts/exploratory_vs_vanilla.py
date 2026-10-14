@@ -43,6 +43,20 @@ def main():
             out[cond][k] = {'mean': float(d.mean()), 'ci95': [float(d.mean() - h), float(d.mean() + h)],
                             'per_seed': d.tolist()}
             print(f'{cond:10s} {k:9s} {d.mean():+6.2f}  [{d.mean() - h:+.2f}, {d.mean() + h:+.2f}]  n={len(d)}')
+    # Holm across all comparisons run here (conditions x metrics)
+    tests = []
+    for cond, v in out.items():
+        for k in ('pass1_pp', 'pass32_pp', 'exits'):
+            d = np.asarray(v[k]['per_seed'])
+            p = float(2 * stats.t.sf(abs(d.mean() / (d.std(ddof=1) / np.sqrt(len(d)))), len(d) - 1))
+            v[k]['p'] = p
+            tests.append((p, cond, k))
+    tests.sort()
+    running = 0.0
+    for i, (p, cond, k) in enumerate(tests):
+        running = max(running, min(1.0, (len(tests) - i) * p))
+        out[cond][k]['p_holm'] = running
+    print('smallest Holm-adjusted p:', round(tests and out[tests[0][1]][tests[0][2]]['p_holm'], 3))
     path = root / 'analysis' / f'exploratory_vs_vanilla_{a.model_size}.json'
     path.write_text(json.dumps(out, indent=1))
     print('wrote', path)

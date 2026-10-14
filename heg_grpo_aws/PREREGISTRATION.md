@@ -243,3 +243,10 @@ reported with their intervals and are not called null unless their 90% CI falls 
   exploratory and uncorrected: `scripts/exploratory_vs_vanilla.py` (each condition minus vanilla, paired by seed, on
   Pass@1, Pass@32 and exits). Removed from the paper a 3-seed observation that did not hold at 4-5 seeds (vanilla's
   slope varied least across seeds; at 4 seeds it varies most).
+- 2026-10-14 (night, after an external review): added two descriptive, post-hoc analyses that need no new runs:
+  Holm correction across the 15 exploratory comparisons in `scripts/exploratory_vs_vanilla.py` (none survives;
+  smallest adjusted p = 0.19) and a sampling-noise floor for boundary entries/exits in `scripts/noise_floor.py`
+  (two halves of the base model's own samples differ by 31 exits / 33 entries at n=16; trained runs 29-32 / 34-38).
+  The paper now states both, states that one gradient step per batch makes the PPO clip inactive, gives the CB
+  initialisation and clip/normalise order, the partitioner's linkage and embedding checkpoint, how 4- and 5-seed
+  cells are paired, and words the training-intensity explanation as an untested hypothesis.

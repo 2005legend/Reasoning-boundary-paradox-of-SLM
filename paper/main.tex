@@ -89,33 +89,27 @@ Chennai, India\\
 \maketitle
 
 \begin{abstract}
-Reinforcement learning with verifiable rewards (RLVR) raises the single-sample accuracy of language models.
-Whether it also shrinks the set of problems a model can solve is disputed: base models overtake RLVR-trained ones
-at large $k$ in some studies, longer training expands the boundary in others, and a third line traces the decline
-to how Pass@$k$ is measured. All of this evidence is automatic, nobody has asked people what RLVR loses, and fixes
-that act within a rollout group and across prompts have never been tested together. We take up all three gaps on
+Reinforcement learning with verifiable rewards (RLVR) raises the single-sample accuracy of language models, but
+whether it shrinks the set of problems a model can solve is disputed, all of the evidence is automatic, and fixes
+that act within a rollout group and across prompts have not been tested together. We study all three on
 Qwen2.5-0.5B-Instruct trained with GRPO on MATH. A pre-registered $2\times3$ factorial crosses a macro factor (none,
-or a topic-level budget on positive advantage) with a micro factor (none, the per-prompt SELF filter, or
-mean-preserving redistribution over solution modes), with four or five seeds per cell (27 trained models), and a
-blinded human audit checks what is lost. At \R{meta.rpp} rollouts per training problem, \RT{R1}{vanilla GRPO does not shrink the
-boundary. MATH-500 Pass@1 moves from \R{math.base.p1}\% to \R{math.vanilla.p1}\%, Pass@32 rises from
-\R{math.base.p32}\% to \R{math.vanilla.p32}\%, and every condition gains more problems than it loses. Neither
-pre-registered contrast is significant: under the budget, swapping the SELF filter for mode redistribution changes
-the gain from $k=1$ to $k=32$ by \R{math.P1.g32} points (95\% CI), and adding the budget to the redistribution by
-\R{math.P2.g32}. In exploratory comparisons the topic budget raises Pass@1 by about one point over vanilla.}
-\RT{R17}{The two annotators agreed on \R{human.h1.rawagree}\% of solution pairs (PABAK
-\R{human.h1.pabak}) and judged \R{human.h1.cons.same} of the \R{human.h1.consensus} agreed pairs to use the same
-approach. The word-overlap partitioner that splits such pairs into ``modes'' scores \R{human.h1.acc}\% against them,
-below the \R{human.h1.alwayssame}\% of a labeller that always answers ``same''. The diversity these fixes reweight is
-mostly wording. Labels of reasoning validity agreed no better than chance, so what was lost stays open.} We read the
-null as a matter of training intensity, not model size. The protocol runs on one 24\,GB GPU.
+or a topic-level budget on positive advantage) with a micro factor (none, the SELF filter, or redistribution over
+solution modes), with four or five seeds per cell (27 models), and a blinded human audit examines modes and losses. At \R{meta.rpp} rollouts per training problem, \RT{R1}{vanilla GRPO does not shrink the boundary: MATH-500
+Pass@1 moves from \R{math.base.p1}\% to \R{math.vanilla.p1}\% and Pass@32 from \R{math.base.p32}\% to
+\R{math.vanilla.p32}\%, and problems leaving the boundary stay at the sampling-noise level. Neither pre-registered
+contrast is significant (95\% CIs of \R{math.P1.g32} and \R{math.P2.g32} points on the gain from $k=1$ to $k=32$).
+The topic budget raises Pass@1 by about one point over vanilla (uncorrected).}
+\RT{R17}{Annotators agreed on \R{human.h1.rawagree}\% of solution pairs (PABAK \R{human.h1.pabak}) and judged
+\R{human.h1.cons.same} of \R{human.h1.consensus} agreed pairs to share one approach; the word-overlap partitioner
+that splits them into ``modes'' scores \R{human.h1.acc}\%, below the \R{human.h1.alwayssame}\% of always answering
+``same''. The diversity these fixes reweight is mostly wording; validity labels agreed no better than chance.} We
+hypothesise that the null reflects low training intensity; we did not vary it.
 
 \smallskip\noindent\textit{Code, data and pre-registration:}\ \repo
 \end{abstract}
 
 \begin{IEEEkeywords}
-reinforcement learning with verifiable rewards, GRPO, Pass@$k$, reasoning boundary, small language
-models, credit assignment, human evaluation, pre-registration
+reinforcement learning with verifiable rewards, GRPO, Pass@$k$, small language models, human evaluation
 \end{IEEEkeywords}
 
 % =====================================================================================================
@@ -130,8 +124,7 @@ report the opposite. Prolonged training expands the boundary~\cite{liu2025prorl}
 correct chains of thought are counted~\cite{wen2025implicit}, and a two-stage account reconciles the two by training
 duration~\cite{yao2025debate}. A third view blames the measurement: aggregate declines track how few rollouts each
 training problem receives~\cite{yuan2026overtraining}, and Pass@$k$ at large $k$ rewards lucky
-hits~\cite{dragoi2025breadth}. The question matters most for small language models (SLMs), which depend on
-sampling-based coverage such as majority voting and verifier reranking.
+hits~\cite{dragoi2025breadth}.
 
 The evidence on every side is automatic. Pass@$k$ cannot tell a valid solution from a lucky guess. CoT-Pass@$k$
 hands that judgment to LLM judges, which accept corrupted reasoning almost as often as clean
@@ -146,17 +139,16 @@ tasks~\cite{sun2026curverl,yuan2026overtraining,ramesh2026mtgrpo,nguyen2025parad
 but have not been tested together (ReCo combines two corrections, both within one prompt~\cite{park2026reco}). One
 pre-registered study addresses all three gaps. Our contributions:
 \begin{itemize}
-\item \emph{Is shrinkage real at SLM scale?} A multi-seed measurement on Qwen2.5-0.5B-Instruct~\cite{qwen2024qwen25}
-trained on MATH~\cite{hendrycks2021math}, with problem-level boundary entries and exits and the number of rollouts
-per training problem~\cite{yuan2026overtraining}.
+\item \emph{Is shrinkage real at small-language-model (SLM) scale?} A multi-seed measurement on Qwen2.5-0.5B-Instruct~\cite{qwen2024qwen25}
+trained on MATH~\cite{hendrycks2021math}, with problem-level boundary entries and exits.
 \item \emph{What is lost, according to people?} A blinded audit of (H1) whether our partitioner's solution modes
 are distinct strategies and (H2) whether the base model's successes on lost problems were valid reasoning.
 \item \emph{Do the fixes compose?} A $2\times3$ factorial crossing a topic-level budget on positive advantage (CB,
 macro) with no micro term, the SELF filter, or intra-group mode-rarity redistribution (MEG).
 \item \RT{R2}{The answers: at about two rollouts per training problem RLVR expands the boundary slightly, no fix or
 combination moves the shrinkage slope by more than about one point per unit $\ln k$, and the modes the fixes rely
-on are mostly wording. In exploratory comparisons, the topic budget raises Pass@1 by about one point over
-vanilla, and \cond{CB$\times$SELF} ranks first on every Pass@$k$ and loses the fewest problems.}
+on are mostly wording. In exploratory comparisons (uncorrected), the topic budget raises Pass@1 by about one
+point over vanilla, and \cond{CB$\times$SELF} ranks first on every Pass@$k$.}
 \end{itemize}
 
 % =====================================================================================================
@@ -210,8 +202,9 @@ the PPO-clip loss~\cite{schulman2017ppo} averaged over all $T$ completion tokens
 \min\!\big(\rho_{i,t}\Atil_i,\ \operatorname{clip}(\rho_{i,t},1-\varepsilon,1+\varepsilon)\,\Atil_i\big),
 \label{eq:loss}
 \end{equation}
-where $\rho_{i,t}$ is the token probability ratio. Updates are on-policy with no KL penalty, and vanilla GRPO is
-$g_i\equiv1$. Fig.~\ref{fig:method} shows one training step.
+where $i$ runs over all $16\times8$ completions of a step and $\rho_{i,t}$ is the ratio of the token's probability
+under the current and the sampling policy. We take one gradient step per batch, so $\rho_{i,t}=1$, the clip never
+binds, and the update is the token-level policy gradient; there is no KL penalty, and vanilla GRPO is $g_i\equiv1$. Fig.~\ref{fig:method} shows one training step.
 
 \begin{figure*}[t]
 \centering
@@ -258,9 +251,11 @@ advantage never uses up a topic's budget. With the overspend ratio $\rho_c = s_c
 \tilde g_c = \delta^{\max(0,\ \rho_c-\vartheta)},\qquad \vartheta=\cbTheta,\ \delta=\cbDelta ,
 \label{eq:cb}
 \end{equation}
-so a topic at $1.5\times$ the average spend gets half the credit of one within budget. The gate acts only on
-rollouts with positive advantage; their weights are clipped to $[0.3,3]$ and rescaled to mean 1 over the step, so
-CB moves credit between topics instead of lowering the learning rate. The original specification ($\vartheta=1.5$,
+so a topic at $1.5\times$ the average spend gets half the credit of one within budget. Spend starts at
+zero and a topic absent from a step keeps its value. The gate acts only on rollouts with positive advantage: their
+weights are normalised to mean 1 over the step, clipped to $[0.3,3]$ and normalised again, so CB moves credit
+between topics instead of lowering the learning rate. Because negative advantages are untouched, a prompt's gated
+advantages no longer sum to zero, so CB also acts as a prompt-level reweighting. The original specification ($\vartheta=1.5$,
 $\delta=0.98$, down-weighting only) never fired in the pilot, where spend ratios stayed within $[0.38,1.46]$, so we
 changed it before any main run and recorded the change in the pre-registration.
 
@@ -276,12 +271,15 @@ w_i = \frac{N\,|M(i)|^{-\alpha}}{\sum_{j\in\mathcal{C}}|M(j)|^{-\alpha}}\quad (i
 w_i = 1\quad (i\notin\mathcal{C}),
 \label{eq:meg}
 \end{equation}
-with $\alpha=\megAlpha$, clipped to $[0.3,3]$ and rescaled to mean~1 over $\mathcal{C}$. MEG changes \emph{which}
+with $\alpha=\megAlpha$, clipped to $[0.3,3]$ and rescaled to mean~1 over $\mathcal{C}$ (for $G=8$ the clip binds
+only in all-correct groups, whose advantage is zero). In the composites each gate is computed on its own and the
+weights are multiplied, so under \cond{CB$\times$SELF} CB's normalisation includes prompts that SELF then drops. MEG changes \emph{which}
 correct solutions get credit, not how much; an earlier down-weight-only version was confounded with a lower
 learning rate.
 
-\textbf{Mode partitioner.} Modes come from agglomerative clustering of correct completions, on
-MiniLM~\cite{wang2020minilm} sentence embeddings~\cite{reimers2019sbert} or on word-bigram Jaccard distance. A
+\textbf{Mode partitioner.} Modes come from average-linkage agglomerative clustering of correct
+completions, on MiniLM (all-MiniLM-L6-v2)~\cite{wang2020minilm} sentence embeddings~\cite{reimers2019sbert} or on
+word-bigram Jaccard distance. A
 pre-registered rule, applied to base-model rollouts before training, picks the candidate whose median number of modes
 per group lies in $[2,4]$ and is closest to 3. It selected \R{meta.partitioner} (median \R{meta.calib.modes} modes,
 \R{meta.calib.multishare}\% of groups with more than one; Table~\ref{tab:calib}). \RT{R15}{The embedding candidates
@@ -456,15 +454,16 @@ distribution among correct rollouts during training (mean over seeds).}
 \R{math.vanilla.p1}\% and Pass@32 rises from \R{math.base.p32}\% to \R{math.vanilla.p32}\% (Table~\ref{tab:main}).
 The curve stays above zero up to $k=32$, with slope \R{math.vanilla.slope} (Fig.~\ref{fig:curves}, left). On
 average \R{math.vanilla.entered} problems enter the boundary and \R{math.vanilla.exited} leave it, and every other
-condition also has a positive slope and more entries than exits. Each training problem received \R{meta.rpp}
-rollouts on average, the low-visit end that SLM budgets allow; aggregate shrinkage has been tied to how often a
-problem is revisited~\cite{yuan2026overtraining}.
+condition also has a positive slope and more entries than exits. Much of this turnover is sampling noise: with 16
+samples per problem, the two halves of the base model's own samples already differ by 31 exits and 33 entries,
+while trained runs show 29--32 exits and 34--38 entries against the base model. Exits are at the noise level and
+entries exceed it by about five problems.
 
 \subsection{Pre-registered contrasts}\label{sec:contrasts}
 \begin{table}[t]
 \caption{Contrasts on the MATH-500 shrinkage slope (pp per unit $\ln k$), paired by seed, with hierarchical
-bootstrap CIs; the last column restates the CI as points of gain from $k{=}1$ to $k{=}32$. $p$: Holm-adjusted for
-P1--P2.}
+bootstrap CIs; the last column restates the CI as points of gain from $k{=}1$ to $k{=}32$. Each contrast uses the seeds its
+conditions share (5 for P1, P2; 4 otherwise). $p$: Holm-adjusted for P1--P2.}
 \label{tab:contrasts}
 \centering\footnotesize
 \setlength{\tabcolsep}{1.9pt}
@@ -496,16 +495,16 @@ $\pm\R{meta.sesoi}$ pp per $\ln k$ ($\pm\R{meta.sesoi32}$ points at $k=32$), so 
 within that bound, which we chose after seeing the data; the interactions do not meet it. With the between-seed
 spread we observed, our five seeds detect a difference of about \R{pow.P1.mde5} (P1) and \R{pow.P2.mde5} (P2) pp per
 $\ln k$ at 80\% power.} We read the primary
-contrasts as a bounded null, as pre-registered. Seed-to-seed spread is similar in every condition: the slope's
-standard deviation runs from \R{math.heg.slopesd} (\cond{CB$\times$MEG}) to \R{math.vanilla.slopesd} (\cond{Vanilla}).
+contrasts as a bounded null, as pre-registered.
 
 \textbf{Exploratory, not pre-registered.} Paired by seed against vanilla (four pairs, $t$ intervals, uncorrected
 for the 15 comparisons we ran), the topic budget raises Pass@1: by +0.9 points with \cond{CB} (95\% CI
-[+0.2, +1.5]) and by +1.0 with \cond{CB$\times$SELF} ([+0.4, +1.6]). \cond{CB$\times$SELF} also loses 4.3 fewer
-problems ([0.3, 8.2]), but no condition's Pass@32 is distinguishable from vanilla's (every CI spans zero). The
-budget makes single samples more accurate without widening or narrowing the boundary.
+[+0.2, +1.5]) and by +1.0 with \cond{CB$\times$SELF} ([+0.4, +1.6]). No Pass@32 difference is distinguishable from
+zero, and none of the 15 survives Holm correction (smallest adjusted $p=0.19$). Since a topic's share of credit does
+not predict its gain (Sec.~\ref{sec:levels}), the Pass@1 lift may come from CB's prompt-level reweighting rather than
+its topic signal; a random-weight control, which we did not run, would separate the two.
 
-\subsection{What each level does}
+\subsection{What each level does}\label{sec:levels}
 Mode entropy of the correct rollouts starts at \R{meta.entropy0} and \RT{R7}{does not decay under vanilla GRPO}
 (Fig.~\ref{fig:curves}, right). At evaluation, vanilla's correct answers to a problem fall into
 \R{mech.vanilla.modes} modes on average, against \R{mech.base.modes} for the base model, and its largest mode holds
@@ -538,7 +537,7 @@ unsupported.}
 \label{fig:subjects}
 \end{figure}
 
-\RT{R9}{Boundary exits barely separate the conditions.} \cond{CB$\times$SELF} loses the fewest problems
+\RT{R9}{Boundary exits barely separate the conditions, and all sit near the sampling-noise level.} \cond{CB$\times$SELF} loses the fewest problems
 (\R{math.hcb.exited}) and \cond{MEG} the most (\R{math.meg.exited}), against \R{math.vanilla.exited} for
 \cond{Vanilla}. Across the \R{mech.div_exits.n} runs, those that gained more distinct correct modes lost slightly
 more problems (Spearman $\rho=\R{mech.div_exits.rho}$, $p=\R{mech.div_exits.p}$), but this does not survive
@@ -569,28 +568,28 @@ $p=\R{human.h2.B.p}$).} We report H2 as inconclusive.
 % =====================================================================================================
 \section{Discussion and Limitations}
 % =====================================================================================================
-\RT{R13}{\textbf{Training intensity, not size.} With about two rollouts per training problem and a policy that moved
-little (final KL to the base model 2--13 times its bf16 noise floor of about $2\times10^{-4}$), RLVR on a 0.5B model expands the boundary
+\RT{R13}{\textbf{Training intensity: a hypothesis.} With about two rollouts per training problem and a policy that moved
+little (vanilla's Pass@1 rose by only 0.1 points; final KL to the base model 2--13 times its bf16 noise floor of about $2\times10^{-4}$), RLVR on a 0.5B model expands the boundary
 slightly. Accounts that tie shrinkage to repeated reinforcement of saturated problems~\cite{yuan2026overtraining} or
 to a long exploitation phase~\cite{yao2025debate} predict exactly this, and the reported
-inversions~\cite{yue2025rl,nguyen2025paradox} come from far longer training. We read our null as a statement about
-the regime a single-GPU budget reaches, not about model size. It suggests a direct test: raise rollouts per problem
+inversions~\cite{yue2025rl,nguyen2025paradox} come from far longer training. We therefore read our null as a statement
+about the regime a single-GPU budget reaches; we varied neither training length nor model size, so this remains a
+hypothesis. It suggests a direct test: raise rollouts per problem
 at 0.5B and shrinkage should appear. We registered that test (240-step runs scored at steps 120, 180 and 240) but
 could not afford it; our prediction, made before any such run, is that vanilla's slope declines over those steps,
 and if it does not, the intensity reading fails.} \textbf{The partition is the weak link.} Embedding partitions put nearly every
 group in one mode (Table~\ref{tab:calib}), and the bigram partition finds about three modes that people see as one
 approach. Neither tracks what intra-group methods assume it tracks, which matters for any method that reweights credit by the
 diversity of correct rollouts within a group~\cite{cao2026cuegrpo,chen2026gcpo,chen2025dragrpo}. It is consistent
-with \cond{MEG} ranking last on slope, exits and net boundary gain: credit spread over wording variants does not
-buy new approaches. This fits Lee et al.'s
-finding that a third of MATH training problems admit more than one approach~\cite{lee2026strategy}: the alternatives exist in
-the dataset but rarely appear in what a 0.5B model samples. We do not claim that shrinkage is absent at larger
-budgets; the bounds in Table~\ref{tab:contrasts} are what a longer study would need to beat.
+with \cond{MEG} ranking last on slope and net boundary gain: credit spread over wording variants does not
+buy new approaches. A third of MATH training problems admit more than one approach~\cite{lee2026strategy}, but a 0.5B model
+rarely samples them.
 
 \textbf{Limitations.} One model at one size, LoRA, one RL algorithm and short training (\R{meta.steps} steps, cut from
 a planned 240), evaluated only on MATH-500. Four or five seeds per cell leave the interactions open, and each run has one full evaluation, so we show no
 trajectory over training. SELF omits its
-forward-KL term, and no random-partition control was run. The annotators differed in strictness on H2, and the
+forward-KL term and, by skipping solved prompts, takes fewer effective updates than vanilla. No random-partition
+control for MEG or random-weight control for CB was run. The annotators differed in strictness on H2, and the
 pre-registered third annotator was not used. The correlations above are descriptive and were added after the
 pre-registration.
 
@@ -606,7 +605,7 @@ partitioner's modes to be wording variants of one approach. The protocol runs on
 \ifblind\else
 \section*{Acknowledgment}
 We thank the two annotators. This work used AWS credits awarded to our team for placing among the top 500 teams in
-the Amazon ML Challenge 2026; early experiments ran on a local NVIDIA RTX 3060 (12\,GB). AWS compute: \R{meta.gpuh}
+the Amazon ML Challenge 2026. AWS compute: \R{meta.gpuh}
 A10G GPU-hours, about \$\R{meta.usd}. An AI assistant (Claude, Anthropic) was used to write analysis
 code and to draft and edit parts of the text; the authors checked the results against the logs and take
 responsibility for the content.
