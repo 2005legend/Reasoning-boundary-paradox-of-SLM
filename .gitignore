@@ -1,3 +1,6 @@
 __pycache__
 *.zip
 temp_*/
+
+# Full AWS/S3 backup (model weights, checkpoints); kept locally only
+aws_s3_backup/
