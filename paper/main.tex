@@ -102,7 +102,8 @@ boundary. MATH-500 Pass@1 moves from \R{math.base.p1}\% to \R{math.vanilla.p1}\%
 \R{math.base.p32}\% to \R{math.vanilla.p32}\%, and every condition gains more problems than it loses. Neither
 pre-registered contrast is significant: under the budget, swapping the SELF filter for mode redistribution changes
 the gain from $k=1$ to $k=32$ by \R{math.P1.g32} points (95\% CI), and adding the budget to the redistribution by
-\R{math.P2.g32}.} \RT{R17}{The two annotators agreed on \R{human.h1.rawagree}\% of solution pairs (PABAK
+\R{math.P2.g32}. In exploratory comparisons the topic budget raises Pass@1 by about one point over vanilla.}
+\RT{R17}{The two annotators agreed on \R{human.h1.rawagree}\% of solution pairs (PABAK
 \R{human.h1.pabak}) and judged \R{human.h1.cons.same} of the \R{human.h1.consensus} agreed pairs to use the same
 approach. The word-overlap partitioner that splits such pairs into ``modes'' scores \R{human.h1.acc}\% against them,
 below the \R{human.h1.alwayssame}\% of a labeller that always answers ``same''. The diversity these fixes reweight is
@@ -154,8 +155,8 @@ are distinct strategies and (H2) whether the base model's successes on lost prob
 macro) with no micro term, the SELF filter, or intra-group mode-rarity redistribution (MEG).
 \item \RT{R2}{The answers: at about two rollouts per training problem RLVR expands the boundary slightly, no fix or
 combination moves the shrinkage slope by more than about one point per unit $\ln k$, and the modes the fixes rely
-on are mostly wording. In an exploratory comparison, the topic budget raises Pass@1 by about one point over
-vanilla without changing the slope.}
+on are mostly wording. In exploratory comparisons, the topic budget raises Pass@1 by about one point over
+vanilla, and \cond{CB$\times$SELF} ranks first on every Pass@$k$ and loses the fewest problems.}
 \end{itemize}
 
 % =====================================================================================================
@@ -386,8 +387,9 @@ per cell (16 runs); we then added 11 runs, registered before they ran (14 planne
 \section{Results}
 % =====================================================================================================
 \begin{table}[t]
-\caption{MATH-500 Pass@$k$ (\%, mean over seeds), shrinkage slope (pp per unit $\ln k$; higher is better) and
-boundary entries/exits (of 500 problems).}
+\caption{MATH-500 Pass@$k$ (\%, mean over 4 seeds for Vanilla, SELF, CB and 5 for the others), shrinkage slope
+(pp per unit $\ln k$; higher is better) and boundary entries/exits (of 500 problems). Bold: best mean per column;
+only the Pass@1 gains are statistically supported (Sec.~\ref{sec:contrasts}).}
 \label{tab:main}
 \centering\footnotesize
 \setlength{\tabcolsep}{2.6pt}
@@ -396,11 +398,11 @@ boundary entries/exits (of 500 problems).}
 Condition & P@1 & P@4 & P@16 & P@32 & Slope & In / Out \\
 \midrule
 Base model & \R{math.base.p1} & \R{math.base.p4} & \R{math.base.p16} & \R{math.base.p32} & -- & -- \\
-\cond{Vanilla} & \R{math.vanilla.p1} & \R{math.vanilla.p4} & \R{math.vanilla.p16} & \R{math.vanilla.p32} & \R{math.vanilla.slope} & \R{math.vanilla.entered} / \R{math.vanilla.exited} \\
+\cond{Vanilla} & \R{math.vanilla.p1} & \R{math.vanilla.p4} & \R{math.vanilla.p16} & \R{math.vanilla.p32} & \textbf{\R{math.vanilla.slope}} & \R{math.vanilla.entered} / \R{math.vanilla.exited} \\
 \cond{SELF} & \R{math.self.p1} & \R{math.self.p4} & \R{math.self.p16} & \R{math.self.p32} & \R{math.self.slope} & \R{math.self.entered} / \R{math.self.exited} \\
 \cond{MEG} & \R{math.meg.p1} & \R{math.meg.p4} & \R{math.meg.p16} & \R{math.meg.p32} & \R{math.meg.slope} & \R{math.meg.entered} / \R{math.meg.exited} \\
 \cond{CB} & \R{math.cb.p1} & \R{math.cb.p4} & \R{math.cb.p16} & \R{math.cb.p32} & \R{math.cb.slope} & \R{math.cb.entered} / \R{math.cb.exited} \\
-\cond{CB$\times$SELF} & \R{math.hcb.p1} & \R{math.hcb.p4} & \R{math.hcb.p16} & \R{math.hcb.p32} & \R{math.hcb.slope} & \R{math.hcb.entered} / \R{math.hcb.exited} \\
+\cond{CB$\times$SELF} & \textbf{\R{math.hcb.p1}} & \textbf{\R{math.hcb.p4}} & \textbf{\R{math.hcb.p16}} & \textbf{\R{math.hcb.p32}} & \R{math.hcb.slope} & \R{math.hcb.entered} / \textbf{\R{math.hcb.exited}} \\
 \cond{CB$\times$MEG} & \R{math.heg.p1} & \R{math.heg.p4} & \R{math.heg.p16} & \R{math.heg.p32} & \R{math.heg.slope} & \R{math.heg.entered} / \R{math.heg.exited} \\
 \bottomrule
 \end{tabular}
@@ -458,7 +460,7 @@ condition also has a positive slope and more entries than exits. Each training p
 rollouts on average, the low-visit end that SLM budgets allow; aggregate shrinkage has been tied to how often a
 problem is revisited~\cite{yuan2026overtraining}.
 
-\subsection{Pre-registered contrasts}
+\subsection{Pre-registered contrasts}\label{sec:contrasts}
 \begin{table}[t]
 \caption{Contrasts on the MATH-500 shrinkage slope (pp per unit $\ln k$), paired by seed, with hierarchical
 bootstrap CIs; the last column restates the CI as points of gain from $k{=}1$ to $k{=}32$. $p$: Holm-adjusted for
@@ -483,7 +485,9 @@ E1 & CB$\times$MEG $-$ Vanilla & \R{math.E1.est} & \R{math.E1.bci} & \R{math.E1.
 \end{table}
 
 \RT{R4}{All six slopes are positive, from \R{math.meg.slope} (\cond{MEG}) to \R{math.vanilla.slope}
-(\cond{Vanilla}); no gate has a steeper slope than vanilla.} \RT{R5}{Neither primary contrast clears the pre-registered bar
+(\cond{Vanilla}). Vanilla's slope is the steepest because its Pass@1 barely moved, so its gains
+grow with $k$; the budgeted conditions start higher. The three CB conditions rank first to third on every Pass@$k$
+from $k=1$ to $32$, and \cond{CB$\times$SELF} leads on each and loses the fewest problems (Table~\ref{tab:main}).} \RT{R5}{Neither primary contrast clears the pre-registered bar
 (Table~\ref{tab:contrasts}).} \RT{R6}{In points of gain between $k=1$ and $k=32$, P1 lies within \R{math.P1.g32} and
 P2 within \R{math.P2.g32}, so any difference between the micro terms is under about three points. The interactions
 are wider, \R{math.S1.g32} and \R{math.S2.g32}, which admits effects larger than vanilla's whole gain at $k=32$; with
@@ -576,7 +580,9 @@ could not afford it; our prediction, made before any such run, is that vanilla's
 and if it does not, the intensity reading fails.} \textbf{The partition is the weak link.} Embedding partitions put nearly every
 group in one mode (Table~\ref{tab:calib}), and the bigram partition finds about three modes that people see as one
 approach. Neither tracks what intra-group methods assume it tracks, which matters for any method that reweights credit by the
-diversity of correct rollouts within a group~\cite{cao2026cuegrpo,chen2026gcpo,chen2025dragrpo}. This fits Lee et al.'s
+diversity of correct rollouts within a group~\cite{cao2026cuegrpo,chen2026gcpo,chen2025dragrpo}. It is consistent
+with \cond{MEG} ranking last on slope, exits and net boundary gain: credit spread over wording variants does not
+buy new approaches. This fits Lee et al.'s
 finding that a third of MATH training problems admit more than one approach~\cite{lee2026strategy}: the alternatives exist in
 the dataset but rarely appear in what a 0.5B model samples. We do not claim that shrinkage is absent at larger
 budgets; the bounds in Table~\ref{tab:contrasts} are what a longer study would need to beat.
