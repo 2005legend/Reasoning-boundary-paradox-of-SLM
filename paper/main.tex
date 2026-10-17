@@ -117,28 +117,29 @@ reinforcement learning with verifiable rewards, GRPO, Pass@$k$, small language m
 \section{Introduction}
 % =====================================================================================================
 Group Relative Policy Optimization (GRPO)~\cite{shao2024deepseekmath} and related RLVR methods are now the
-standard way to improve mathematical reasoning in open language models. Whether they teach a model to solve new
-problems, or only to solve solvable ones more reliably, is disputed. Yue et al.~\cite{yue2025rl} found that base
-models overtake their RLVR-trained versions when many samples are drawn, a \emph{Pass@$k$ inversion} later analysed
-as a shrinking reasoning boundary~\cite{nguyen2025paradox,zhou2026inversion,wu2025leash,zhou2026entrance}. Others
-report the opposite. Prolonged training expands the boundary~\cite{liu2025prorl}, RLVR comes out ahead when only
-correct chains of thought are counted~\cite{wen2025implicit}, and a two-stage account reconciles the two by training
-duration~\cite{yao2025debate}. A third view blames the measurement: aggregate declines track how few rollouts each
-training problem receives~\cite{yuan2026overtraining}, and Pass@$k$ at large $k$ rewards lucky
+standard way to improve mathematical reasoning in open language models, but it is disputed whether they teach a
+model to solve new problems or only to solve solvable ones more reliably. Yue et al.~\cite{yue2025rl} found that
+base models overtake their RLVR-trained versions when many samples are drawn, a \emph{Pass@$k$ inversion} later
+analysed as a shrinking reasoning boundary~\cite{nguyen2025paradox}. Other studies report the opposite: prolonged
+training expands the boundary~\cite{liu2025prorl}, RLVR comes out ahead when only correct chains of thought are
+counted~\cite{wen2025implicit}, and a two-stage account reconciles the two by training
+duration~\cite{yao2025debate}. A third view blames the measurement itself, since aggregate declines track how few
+rollouts each training problem receives~\cite{yuan2026overtraining} and Pass@$k$ at large $k$ rewards lucky
 hits~\cite{dragoi2025breadth}.
 
-The evidence on every side is automatic. Pass@$k$ cannot tell a valid solution from a lucky guess. CoT-Pass@$k$
-hands that judgment to LLM judges, which accept corrupted reasoning almost as often as clean
-reasoning~\cite{tasalti2026cotaudit}, and approach-level diversity has been scored by an LLM judge calibrated on 80
-human-labelled pairs~\cite{lee2026strategy}. As far as we know, no study has asked people what RLVR loses: whether
-the solutions that disappear are distinct strategies, and whether lost problems were ever solved by valid reasoning.
+Whichever view is right, the evidence behind all three is automatic. Pass@$k$ cannot tell a valid solution from a
+lucky guess. CoT-Pass@$k$ hands that judgment to LLM judges, which accept corrupted reasoning almost as often as
+clean reasoning~\cite{tasalti2026cotaudit}, and approach-level diversity has been scored by an LLM judge calibrated
+on 80 human-labelled pairs~\cite{lee2026strategy}. As far as we know, no study has asked people what RLVR loses:
+whether the solutions that disappear are distinct strategies, and whether lost problems were ever solved by valid
+reasoning.
 
-A third gap concerns the fixes. \emph{Intra-group} methods reshape credit using the diversity or structure of one prompt's
-rollouts, for example by giving rare correct modes more credit than common ones~\cite{cao2026cuegrpo,park2026reco,chen2026gcpo,chen2025dragrpo,liu2026edas,cao2026treeadv}, and
-\emph{cross-prompt} methods reweight whole problems or
-tasks~\cite{sun2026curverl,yuan2026overtraining,ramesh2026mtgrpo,nguyen2025paradox}. The two act on different axes
-but have not been tested together (ReCo combines two corrections, both within one prompt~\cite{park2026reco}). One
-pre-registered study addresses all three gaps. Our contributions:
+The proposed fixes have a similar gap. \emph{Intra-group} methods reshape credit within one prompt's rollouts, for
+example by giving rare correct modes more credit than common
+ones~\cite{cao2026cuegrpo,park2026reco,chen2025dragrpo}, while \emph{cross-prompt} methods reweight whole problems
+or tasks~\cite{sun2026curverl,yuan2026overtraining,ramesh2026mtgrpo,nguyen2025paradox}. The two act on different
+axes, yet they have not been tested together; ReCo combines two corrections, but both within one
+prompt~\cite{park2026reco}. We address all three gaps in one pre-registered study. Our contributions:
 \begin{itemize}
 \item \emph{Is shrinkage real at small-language-model (SLM) scale?} A multi-seed measurement on Qwen2.5-0.5B-Instruct~\cite{qwen2024qwen25}
 trained on MATH~\cite{hendrycks2021math}, with problem-level boundary entries and exits.
@@ -157,37 +158,32 @@ point over vanilla, and \cond{CB$\times$SELF} ranks first on every Pass@$k$.}
 % =====================================================================================================
 \textbf{Is shrinkage real?} Yue et al.~\cite{yue2025rl} showed that base models overtake RLVR-trained ones at large
 $k$. Nguyen et al.~\cite{nguyen2025paradox} attribute this to negative interference and winner-take-all
-reinforcement and propose SELF, which trains only on problems whose greedy answer is wrong. Wu et
-al.~\cite{wu2025leash} argue that RLVR stays largely confined to the base model's support, Zhou and Li~\cite{zhou2026entrance}
-place the contraction at the first decision of a solution, and Zhou~\cite{zhou2026inversion} diagnoses the
-inversion. Against this, ProRL~\cite{liu2025prorl} reports expansion after prolonged, KL-controlled training, Wen et
+reinforcement, and propose SELF, which trains only on problems whose greedy answer is wrong. On the other side,
+ProRL~\cite{liu2025prorl} reports expansion after prolonged, KL-controlled training, Wen et
 al.~\cite{wen2025implicit} report expansion under CoT-Pass@$k$, and Yao et al.~\cite{yao2025debate} describe an
-exploitation stage that shrinks the boundary followed by an exploration stage that expands it. Yuan et
-al.~\cite{yuan2026overtraining} tie the decline to few rollouts per problem and gate problems by their estimated contribution to the
-boundary (BBG),
-and Dragoi et al.~\cite{dragoi2025breadth} show that Pass@$k$ favours lucky hits. Other work changes the optimizer, the
-rollout search or the advantage function~\cite{ba2026es,yu2026datpo,decugis2026fade}. At SLM scale, GRPO dynamics~\cite{ghosh2026dynamics},
-difficulty scaling~\cite{yadav2026difficulty} and reward granularity~\cite{palandye2026granularity} have been
-studied, but not shrinkage.
+exploitation stage that shrinks the boundary followed by an exploration stage that expands it. Two studies question
+the measurement instead: Yuan et al.~\cite{yuan2026overtraining} tie the decline to few rollouts per problem and
+gate problems by their estimated contribution to the boundary (BBG), and Dragoi et al.~\cite{dragoi2025breadth}
+show that Pass@$k$ favours lucky hits.
 
-\textbf{Measuring what is lost.} Lee et al.~\cite{lee2026strategy} find that embedding similarity tracks phrasing
-more than strategy and word-bigram overlap tracks approach better, and that 0.7\% of GSM8K problems but 33\% of MATH training
-problems admit more than one approach. Yang et al.~\cite{yang2026strategy} code the strategies of frontier models
-with AI coders and human adjudication, without RL. Ta\c{s}alt{\i} et al.~\cite{tasalti2026cotaudit} find that
-CoT-Pass@$k$ judges accept corrupted chains, and that Pass@$k$ exceeds CoT-Pass@$k$ by 19.7 points on
-Qwen2.5-generation solvers. Our audit puts people directly on RLVR outcomes.
+\textbf{Measuring what is lost.} All of these results rest on automatic metrics, and two recent audits question
+them. Lee et al.~\cite{lee2026strategy} find that embedding similarity tracks phrasing more than strategy and
+word-bigram overlap tracks approach better, and that 0.7\% of GSM8K problems but 33\% of MATH training problems
+admit more than one approach. Ta\c{s}alt{\i} et al.~\cite{tasalti2026cotaudit} find that CoT-Pass@$k$ judges accept
+corrupted chains, and that Pass@$k$ exceeds CoT-Pass@$k$ by 19.7 points on Qwen2.5-generation solvers. Our audit
+puts people directly on RLVR outcomes.
 
 \textbf{Intra-group credit redistribution.} Cue-GRPO~\cite{cao2026cuegrpo} redistributes positive credit over a
 partition of the correct rollouts by rarity and restores the mean; we adopt its rule as our micro term.
 ReCo~\cite{park2026reco} reweights against concentration at the response and token level, and
-GCPO~\cite{chen2026gcpo}, DRA-GRPO~\cite{chen2025dragrpo}, EDAS~\cite{liu2026edas} and TreeAdv~\cite{cao2026treeadv}
-reshape advantages using diversity or structure within the group.
+DRA-GRPO~\cite{chen2025dragrpo} adjusts rewards by the semantic density of the group.
 
-\textbf{Cross-prompt reweighting.} MT-GRPO~\cite{ramesh2026mtgrpo} reweights explicit tasks for worst-task
-reliability, CurveRL~\cite{sun2026curverl} reweights prompts by pass-rate distribution, BBG gates problems by their estimated
-contribution to the boundary~\cite{yuan2026overtraining}, and SELF selects by greedy failure~\cite{nguyen2025paradox}. CB works at the level
-of topics, uses each topic's share of positive advantage as its signal, and keeps state across steps. We ask whether
-a topic-level and an intra-group intervention compose, not which gate is best.
+\textbf{Cross-prompt reweighting.} At the level of whole prompts, MT-GRPO~\cite{ramesh2026mtgrpo} reweights
+explicit tasks for worst-task reliability, CurveRL~\cite{sun2026curverl} reweights prompts by their pass-rate
+distribution, BBG gates problems by their estimated contribution to the boundary~\cite{yuan2026overtraining}, and
+SELF selects by greedy failure~\cite{nguyen2025paradox}. CB differs from all four: it works at the level of topics,
+uses each topic's share of positive advantage as its signal, and keeps state across steps. We ask whether a
+topic-level and an intra-group intervention compose, not which gate is best.
 
 % =====================================================================================================
 \section{Method}
@@ -256,7 +252,7 @@ so a topic at $1.5\times$ the average spend gets half the credit of one within b
 zero and a topic absent from a step keeps its value. The gate acts only on rollouts with positive advantage: their
 weights are normalised to mean 1 over the step, clipped to $[0.3,3]$ and normalised again, so CB moves credit
 between topics instead of lowering the learning rate. Because negative advantages are untouched, a prompt's gated
-advantages no longer sum to zero, so CB also acts as a prompt-level reweighting. The original specification ($\vartheta=1.5$,
+advantages no longer sum to zero, so CB also reweights whole prompts. The original specification ($\vartheta=1.5$,
 $\delta=0.98$, down-weighting only) never fired in the pilot, where spend ratios stayed within $[0.38,1.46]$, so we
 changed it before any main run and recorded the change in the pre-registration.
 
@@ -279,7 +275,7 @@ correct solutions get credit, not how much; an earlier down-weight-only version 
 learning rate.
 
 \textbf{Mode partitioner.} Modes come from average-linkage agglomerative clustering of correct
-completions, on MiniLM (all-MiniLM-L6-v2)~\cite{wang2020minilm} sentence embeddings~\cite{reimers2019sbert} or on
+completions, on MiniLM (all-MiniLM-L6-v2)~\cite{wang2020minilm} sentence embeddings or on
 word-bigram Jaccard distance. A
 pre-registered rule, applied to base-model rollouts before training, picks the candidate whose median number of modes
 per group lies in $[2,4]$ and is closest to 3. It selected \R{meta.partitioner} (median \R{meta.calib.modes} modes,
@@ -485,6 +481,7 @@ E1 & CB$\times$MEG $-$ Vanilla & \R{math.E1.est} & \R{math.E1.bci} & \R{math.E1.
 \end{tabular}
 \end{table}
 
+With no shrinkage for the gates to correct, the question becomes whether they change the slope at all.
 \RT{R4}{All six slopes are positive, from \R{math.meg.slope} (\cond{MEG}) to \R{math.vanilla.slope}
 (\cond{Vanilla}). Vanilla's slope is the steepest because its Pass@1 barely moved, so its gains
 grow with $k$; the budgeted conditions start higher. The three CB conditions rank first to third on every Pass@$k$
@@ -507,7 +504,8 @@ not predict its gain (Sec.~\ref{sec:levels}), the Pass@1 lift may come from CB's
 its topic signal; a random-weight control, which we did not run, would separate the two.
 
 \subsection{What each level does}\label{sec:levels}
-Mode entropy of the correct rollouts starts at \R{meta.entropy0} and \RT{R7}{does not decay under vanilla GRPO}
+The contrasts show that the gates change the slope very little. This subsection asks what each level did during
+training. Mode entropy of the correct rollouts starts at \R{meta.entropy0} and \RT{R7}{does not decay under vanilla GRPO}
 (Fig.~\ref{fig:curves}, right). At evaluation, vanilla's correct answers to a problem fall into
 \R{mech.vanilla.modes} modes on average, against \R{mech.base.modes} for the base model, and its largest mode holds
 \R{mech.vanilla.top}\% of them against \R{mech.base.top}\%. There is no collapse for MEG to undo. \cond{SELF} trains on
@@ -539,7 +537,8 @@ unsupported.}
 \label{fig:subjects}
 \end{figure}
 
-\RT{R9}{Boundary exits barely separate the conditions, and all sit near the sampling-noise level.} \cond{CB$\times$SELF} loses the fewest problems
+The problems each condition loses tell a similar story. \RT{R9}{Boundary exits barely separate the conditions,
+and all sit near the sampling-noise level.} \cond{CB$\times$SELF} loses the fewest problems
 (\R{math.hcb.exited}) and \cond{MEG} the most (\R{math.meg.exited}), against \R{math.vanilla.exited} for
 \cond{Vanilla}. Across the \R{mech.div_exits.n} runs, those that gained more distinct correct modes lost slightly
 more problems (Spearman $\rho=\R{mech.div_exits.rho}$, $p=\R{mech.div_exits.p}$), but this does not survive
@@ -547,6 +546,8 @@ correction over the \R{mech.nlinks} correlations we computed (Benjamini--Hochber
 Since the next subsection shows these modes are mostly wording, we treat it as a hypothesis.
 
 \subsection{What is lost: the human audit}
+MEG's modes come from the bigram partitioner, so the audit first checks whether those modes are different
+approaches, then whether the problems vanilla lost had been solved by valid reasoning.
 \textbf{H1, are the modes approaches?} \RT{R17}{The annotators called \R{human.h1.A.same} and \R{human.h1.B.same} of
 the \R{human.h1.items} pairs the same approach, although the partitioner had split half of them. They agreed on
 \R{human.h1.consensus} pairs (\R{human.h1.rawagree}\%), \R{human.h1.cons.same} \textsc{same} and
@@ -579,10 +580,12 @@ about the regime a single-GPU budget reaches; we varied neither training length 
 hypothesis. It suggests a direct test: raise rollouts per problem
 at 0.5B and shrinkage should appear. We registered that test (240-step runs scored at steps 120, 180 and 240) but
 could not afford it; our prediction, made before any such run, is that vanilla's slope declines over those steps,
-and if it does not, the intensity reading fails.} \textbf{The partition is the weak link.} Embedding partitions put nearly every
+and if it does not, the intensity reading fails.}
+
+The second finding concerns the fixes rather than training. \textbf{The partition is the weak link.} Embedding partitions put nearly every
 group in one mode (Table~\ref{tab:calib}), and the bigram partition finds about three modes that people see as one
 approach. Neither tracks what intra-group methods assume it tracks, which matters for any method that reweights credit by the
-diversity of correct rollouts within a group~\cite{cao2026cuegrpo,chen2026gcpo,chen2025dragrpo}. It is consistent
+diversity of correct rollouts within a group~\cite{cao2026cuegrpo,chen2025dragrpo}. It is consistent
 with \cond{MEG} ranking last on slope and net boundary gain: credit spread over wording variants does not
 buy new approaches. A third of MATH training problems admit more than one approach~\cite{lee2026strategy}, but a 0.5B model
 rarely samples them.
