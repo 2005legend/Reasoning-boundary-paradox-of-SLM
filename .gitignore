@@ -4,3 +4,12 @@ temp_*/
 
 # Full AWS/S3 backup (model weights, checkpoints); kept locally only
 aws_s3_backup/
+
+# Manuscript kept private until a venue accepts the paper (code and data stay public)
+paper/*.tex
+paper/*.pdf
+paper/refs.bib
+paper/EDIT_GUIDE.md
+paper/figures_standalone/
+arxiv_source.zip
+arxiv_metadata.txt
