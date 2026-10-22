@@ -1,56 +1,68 @@
-"""Build the IDCIoT-144 camera-ready (main_idciot.tex) from the accepted main.tex: reviewer-driven text changes plus the
-sentence splits from the style revision. Run from paper/:  python tools/make_idciot.py"""
+"""Build the IDCIoT-144 camera-ready from the accepted main.tex.
+
+    python tools/make_idciot.py      -> main_idciot.tex (camera-ready) and main_idciot_highlighted.tex
+                                        (every reviewer-driven change in blue). Run from paper/.
+
+Edit kinds: 'after' appends text after an anchor, 'replace' swaps a passage (the new text is highlighted whole),
+'silent' is a technical change that is not highlighted (labels, reference formatting, sentence splits)."""
 import os
 D = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..') + os.sep
-t = open(D + 'main.tex', encoding='utf-8').read()
+SRC = open(D + 'main.tex', encoding='utf-8').read()
 
-REVIEW = [
-# R1.4: prior methods' model sizes and budgets (from their abstracts)
-(r"""ProRL~\cite{liu2025prorl} reports expansion after prolonged, KL-controlled training, Wen et""",
- r"""ProRL~\cite{liu2025prorl} reports expansion after prolonged, KL-controlled training of a 1.5B model, Wen et"""),
-(r"""DRA-GRPO~\cite{chen2025dragrpo} adjusts rewards by the semantic density of the group.""",
- r"""DRA-GRPO~\cite{chen2025dragrpo} adjusts rewards by the semantic density of the group. Their reported evaluations
-use 1.5B--8B models (Qwen2.5-Math, Llama-3.1-8B, DeepSeek-R1-Distill-Qwen-1.5B), so whether they help a 0.5B model,
+EDITS = [
+# --- Reviewer 1.4: model sizes and budgets of prior methods (from their arXiv abstracts) -------------------------
+('after', r"""ProRL~\cite{liu2025prorl} reports expansion after prolonged, KL-controlled training""",
+ r""" of a 1.5B model"""),
+('after', r"""DRA-GRPO~\cite{chen2025dragrpo} adjusts rewards by the semantic density of the group.""",
+ r""" These three methods were evaluated
+on 1.5B--8B models (Qwen2.5-Math, Llama-3.1-8B, DeepSeek-R1-Distill-Qwen-1.5B); whether they help a 0.5B model,
 whose correct solutions may rarely differ in approach, is open."""),
-# R1.1, R1.3, R1.5, R2.1-R2.5: limitations and future work, one item per comment
-(r"""\textbf{Limitations.} One model at one size, LoRA, one RL algorithm and short training (\R{meta.steps} steps, cut from
+# --- Reviewer 2.3: sampling noise of entries and exits (scripts/significant_exits.py) ------------------------------
+('silent', r"""\subsection{Shrinkage at 0.5B}""", r"""\subsection{Shrinkage at 0.5B}\label{sec:shrink}"""),
+('after', r"""Exits are at the noise level and
+entries exceed it by about five problems.""",
+ r""" That small excess is spread thinly. Tested one problem at a time (two-sided
+Fisher exact test, $p<0.05$, which needs at least 6 of 32 successes on one side and none on the other), at most one
+entry or exit per run is significant: 0.0--0.4 exits and 0.0--1.0 entries per condition on average."""),
+('after', r"""of its first three seeds (the audit was drawn before the extension runs).""",
+ r""" The base model had solved each of them in
+only 1--3 of 32 samples, too few for any single loss to be significant."""),
+('after', r"""gave 5 of 6 against 2 of 9, $p=0.041$.)""",
+ r""" Together with Sec.~\ref{sec:shrink},
+this suggests the lost set consists mostly of rarely solved problems that sampling moves in and out of the boundary."""),
+# --- Reviewers 1.1, 1.3, 1.5, 2.1-2.5: limitations and future work, grouped by theme -------------------------------
+('replace', r"""\textbf{Limitations.} One model at one size, LoRA, one RL algorithm and short training (\R{meta.steps} steps, cut from
 a planned 240), evaluated only on MATH-500. Four or five seeds per cell leave the interactions open, and each run has one full evaluation, so we show no
 trajectory over training. SELF omits its
 forward-KL term and, by skipping solved prompts, takes fewer effective updates than vanilla. No random-partition
 control for MEG or random-weight control for CB was run. The annotators differed in strictness on H2, and the
 majority follows the stricter two. The correlations above are descriptive and were added after the
 pre-registration.""",
- r"""\textbf{Limitations and future work.} We study one model (Qwen2.5-0.5B-Instruct), with LoRA, one RL algorithm,
-short training (\R{meta.steps} steps, cut from a planned 240) and one benchmark (MATH-500). The results therefore say
-nothing yet about other model sizes or datasets; repeating the design on a larger model and on GSM8K and AIME is the
-first extension. Four or five seeds per cell leave the interactions open, and each run has one full evaluation, so we
-show no trajectory over training. The training-intensity explanation is untested. The registered 240-step runs, or
-training on a small subset to raise rollouts per problem, would test it directly. Our SELF is the selection rule
-alone: it omits the forward-KL term and, by skipping solved prompts, takes fewer effective updates than vanilla, so
-the full objective may behave differently. Boundary entries and exits at 32 samples are almost all sampling noise
-(Sec.~\ref{sec:shrink}); larger budgets (128 or 256 samples) are needed to detect real changes on single problems. Both partitioners we tried fail to find
-approaches, so MEG-style redistribution needs an LLM-judge or reasoning-step partitioner before it can be judged
-fairly. We ran no random-weight control for CB and no random-partition control for MEG, so the Pass@1 gain cannot be
-attributed to topic-specific allocation. The annotators differed in strictness on H2, and the majority follows the
-stricter two. The correlations above are descriptive and were added after the pre-registration."""),
-(r"""\subsection{Shrinkage at 0.5B}""", r"""\subsection{Shrinkage at 0.5B}\label{sec:shrink}"""),
-# compact reference formatting (same entries; refs_icitiit.bib = refs.bib with short venue names)
-(r"""\bibliography{IEEEabrv,refs}""", r"""\bibliography{IEEEabrv,refs_icitiit}"""),
-# R2.3: per-problem significance of entries and exits (scripts/significant_exits.py)
-(r"""Exits are at the noise level and
-entries exceed it by about five problems.""",
- r"""Exits are at the noise level and
-entries exceed it by about five problems. Tested one problem at a time (two-sided Fisher exact test, $p<0.05$, which
-needs at least 6 of 32 successes on one side and none on the other), at most one entry or exit per run is
-significant: 0.0--0.4 exits and 0.0--1.0 entries per condition on average."""),
-(r"""of its first three seeds (the audit was drawn before the extension runs).""",
- r"""of its first three seeds (the audit was drawn before the extension runs). The base model had solved each of them in
-only 1--3 of 32 samples, too few for any single loss to be significant."""),
-# R1.2: no claim that the topic weighting itself helps
-(r"""People judged the
-partitioner's modes to be wording variants of one approach.""",
- r"""The topic budget's small Pass@1 gain is not shown to come from its topic weighting. People judged the
-partitioner's modes to be wording variants of one approach."""),
+ r"""\textbf{Limitations and future work.} The study is narrow in scope. It uses one model (Qwen2.5-0.5B-Instruct),
+LoRA, one RL algorithm, short training (\R{meta.steps} steps, cut from a planned 240) and one benchmark (MATH-500), so it
+says nothing yet about other model sizes or datasets. The first extension is the same design on a larger model and on
+GSM8K and AIME. The study also cannot test its own explanation: the training-intensity reading needs the registered
+240-step runs, or training on a small subset to raise rollouts per problem. Three gaps limit what the gate results mean. Our SELF is the selection rule alone, without the forward-KL term and
+with fewer effective updates than vanilla, so the full objective may behave differently. We ran no random-weight
+control for CB and no random-partition control for MEG, so the Pass@1 gain cannot be attributed to topic-specific
+allocation. Both partitioners we tried fail to find approaches, so MEG-style redistribution needs an LLM-judge or
+reasoning-step partitioner before it can be judged fairly. The measurements are also coarse. Four or five seeds per cell leave the interactions open, and one evaluation per
+run shows no trajectory over training. At 32 samples, boundary entries and exits are almost all sampling noise
+(Sec.~\ref{sec:shrink}); detecting real changes on single problems needs 128 or 256 samples. The annotators differed in
+strictness on H2, and the majority follows the stricter two. The correlations above are descriptive and were added
+after the pre-registration."""),
+# --- Reviewer 1.2: no claim that the topic weighting itself helps ---------------------------------------------------
+('after', r"""their combination moves the shrinkage slope by more than about one point per unit $\ln k$}.""",
+ r""" The topic budget's small Pass@1 gain is not shown to
+come from its topic weighting."""),
+# --- Acknowledgment: credit source and the true total cost -----------------------------------------------------------
+('replace', r"""AWS credits came from the Amazon ML Challenge 2026. AWS compute: \R{meta.gpuh}
+A10G GPU-hours, about \$\R{meta.usd}.""",
+ r"""This work used AWS credits awarded to our team for placing among the top 500 teams in the
+Amazon ML Challenge 2026. The reported runs took \R{meta.gpuh} A10G GPU-hours; total AWS spend, including pilots and one
+failed instance, was about \$172."""),
+# --- formatting only ---------------------------------------------------------------------------------------------------
+('silent', r"""\bibliography{IEEEabrv,refs}""", r"""\bibliography{IEEEabrv,refs_icitiit}"""),
 ]
 SPLITS = [
 ("agreed pairs to share one approach; the word-overlap partitioner", "agreed pairs to share one approach. The word-overlap partitioner"),
@@ -72,15 +84,26 @@ SPLITS = [
 ("could not afford it; our prediction", "could not afford it. Our prediction"),
 ("parts of the text; the authors checked", "parts of the text. The authors checked"),
 ]
-for a, b in REVIEW:
-    n = t.count(a)
-    assert n == 1, ('review', n, a[:80])
-    t = t.replace(a, b)
-done = 0
-for a, b in SPLITS:
-    if t.count(a) == 1:
-        t = t.replace(a, b); done += 1
-    else:
-        print('split not applied (text differs in this version):', a[:50])
-open(D + 'main_idciot.tex', 'w', encoding='utf-8').write(t)
-print('ok:', len(REVIEW), 'review edits,', done, 'sentence splits')
+
+
+def build(highlight):
+    t = SRC
+    for kind, a, b in EDITS:
+        assert t.count(a) == 1, (kind, t.count(a), a[:70])
+        if kind == 'after':
+            t = t.replace(a, a + (r'\textcolor{blue}{' + b + '}' if highlight else b))
+        elif kind == 'replace':
+            t = t.replace(a, (r'{\color{blue}' + b + '}' if highlight else b))
+        else:
+            t = t.replace(a, b)
+    for a, b in SPLITS:
+        if t.count(a) == 1:
+            t = t.replace(a, b)
+        else:
+            print('split skipped:', a[:50])
+    return t
+
+
+open(D + 'main_idciot.tex', 'w', encoding='utf-8').write(build(False))
+open(D + 'main_idciot_highlighted.tex', 'w', encoding='utf-8').write(build(True))
+print('ok:', len(EDITS), 'edits,', len(SPLITS), 'splits; wrote main_idciot.tex and main_idciot_highlighted.tex')
