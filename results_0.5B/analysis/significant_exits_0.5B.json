@@ -1,0 +1,121 @@
+{
+ "n_samples": 32,
+ "alpha": 0.05,
+ "min_count_for_significance": 6,
+ "base_problems_with_count_ge_thr": 243,
+ "base_half_vs_half_significant_flips": 0,
+ "vanilla": {
+  "exits_all": 26.0,
+  "exits_significant": 0.25,
+  "entries_all": 33.25,
+  "entries_significant": 0.0,
+  "per_seed_exits_significant": [
+   1,
+   0,
+   0,
+   0
+  ],
+  "per_seed_entries_significant": [
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "o_self": {
+  "exits_all": 26.0,
+  "exits_significant": 0.25,
+  "entries_all": 32.25,
+  "entries_significant": 0.5,
+  "per_seed_exits_significant": [
+   0,
+   0,
+   1,
+   0
+  ],
+  "per_seed_entries_significant": [
+   2,
+   0,
+   0,
+   0
+  ]
+ },
+ "meg": {
+  "exits_all": 29.0,
+  "exits_significant": 0.4,
+  "entries_all": 31.8,
+  "entries_significant": 0.6,
+  "per_seed_exits_significant": [
+   0,
+   1,
+   0,
+   0,
+   1
+  ],
+  "per_seed_entries_significant": [
+   1,
+   1,
+   0,
+   1,
+   0
+  ]
+ },
+ "cb_grpo": {
+  "exits_all": 26.25,
+  "exits_significant": 0.0,
+  "entries_all": 36.0,
+  "entries_significant": 0.25,
+  "per_seed_exits_significant": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "per_seed_entries_significant": [
+   0,
+   0,
+   1,
+   0
+  ]
+ },
+ "h_cb_grpo": {
+  "exits_all": 23.0,
+  "exits_significant": 0.2,
+  "entries_all": 33.6,
+  "entries_significant": 1.0,
+  "per_seed_exits_significant": [
+   0,
+   0,
+   0,
+   1,
+   0
+  ],
+  "per_seed_entries_significant": [
+   3,
+   0,
+   1,
+   1,
+   0
+  ]
+ },
+ "heg_grpo": {
+  "exits_all": 24.0,
+  "exits_significant": 0.2,
+  "entries_all": 34.0,
+  "entries_significant": 0.6,
+  "per_seed_exits_significant": [
+   0,
+   0,
+   0,
+   1,
+   0
+  ],
+  "per_seed_entries_significant": [
+   1,
+   0,
+   1,
+   0,
+   1
+  ]
+ }
+}
